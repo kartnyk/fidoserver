@@ -33,6 +33,7 @@ const User = mongoose.model('User', userSchema);
 exports.generateRegistrationOptions = async (req, res, next) => {
 	
 	const { username } = req.body;
+	console.log(username)
 
 	try {
 		// Check if the user already exists
@@ -63,4 +64,49 @@ exports.generateRegistrationOptions = async (req, res, next) => {
 		console.error(error);
 		res.status(500).json({ error: 'Internal Server Error' });
 	}
+};
+
+exports.verifyRegistrationData = async(req, res, next) => {
+	try {
+		// Parse clientDataJSON and attestationObject
+		const { clientDataJSON, attestationObject } = registrationData.response;
+	
+		const clientData = parseAttestationRequest(clientDataJSON);
+		if (clientData.challenge !== originalChallenge) {
+		  throw new Error("Challenge does not match!");
+		}
+	
+		if (clientData.origin !== expectedOrigin) {
+		  throw new Error("Origin does not match!");
+		}
+	
+		// Verify the attestation response
+		const verification = await verifyAttestationResponse({
+		  credential: registrationData,
+		  expectedChallenge: originalChallenge,
+		  expectedOrigin,
+		  // If you have a list of trusted authenticators, you can specify them here:
+		  // trustedAttestationTypes: ['packed', 'tpm', ...],
+		  // trustedDeviceAttestationCerts: [...],
+		});
+	
+		if (!verification.verified) {
+		  throw new Error("Attestation response is not verified!");
+		}
+	
+		// Store the new credential data
+		const { id, type, rawId, response } = registrationData;
+		const { verified, authenticatorInfo } = verification;
+	
+		storeCredentialData({
+		  credentialId: rawId,
+		  publicKey: authenticatorInfo.publicKey,
+		  // ... other metadata like counter value
+		});
+	
+		return true;
+	  } catch (error) {
+		console.error("Verification failed:", error);
+		return false;
+	  }
 };
