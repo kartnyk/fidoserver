@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const simpleWebAuthnServer = require('@simplewebauthn/server');
+const crypto = require('crypto');
 
 const {
 	generateRegistrationOptions,
@@ -8,33 +9,41 @@ const {
 	verifyAuthenticationResponse,
 } = simpleWebAuthnServer;
 
-console.log(simpleWebAuthnServer);
-
 // MongoDB connection
 const dbURI = 'mongodb://localhost:27017/fidodb'; // replace with your MongoDB URI
 mongoose
-    .connect(dbURI, { useNewUrlParser: true, useUnifiedTopology: true })
-    .then(() => console.log('Connected to MongoDB'))
-    .catch((err) => console.error('Could not connect to MongoDB', err));
+	.connect(dbURI, { useNewUrlParser: true, useUnifiedTopology: true })
+	.then(() => console.log('Connected to MongoDB'))
+	.catch((err) => console.error('Could not connect to MongoDB', err));
 
 // User schema and model
 const userSchema = new mongoose.Schema({
-    username: String,
-    credential: {
-        credentialId: { type: String, required: true, default: 'xxx' },
-        publicKey: { type: String, required: true, default: 'xxx' },
-        counter: { type: Number, required: true, default: 0 },
-        // Other fields that you may need to store
-    },
+	username: String,
+	userId: String,
+	challenge: String,
+	credential: {
+		fmt: String,
+		counter: Number,
+		aaguid: String,
+		credentialID: { type: Buffer, required: false },
+		credentialPublicKey: { type: Buffer, required: false },
+		credentialType: String,
+		attestationObject: { type: Buffer, required: false },
+		userVerified: Boolean,
+		credentialDeviceType: String,
+		credentialBackedUp: Boolean,
+		origin: String,
+		rpID: String,
+		authenticatorExtensionResults: String, // or another appropriate type if not a string
+		// Other fields that you may need to store for each credential
+	},
 });
 
 const User = mongoose.model('User', userSchema);
 
 exports.generateRegistrationOptions = async (req, res, next) => {
-	
 	const { username } = req.body;
-	console.log(username)
-
+	
 	try {
 		// Check if the user already exists
 		let user = await User.findOne({ username });
@@ -43,8 +52,16 @@ exports.generateRegistrationOptions = async (req, res, next) => {
 			return res.status(400).json({ error: 'User already exists' });
 		}
 
-		// If user does not exist, create a new user (without credentials for now)
-		user = new User({ username });
+		// If user does not exist, create a new user with the generated unique ID
+		// Generate a unique ID for the user based on the username
+		const userId = crypto
+			.createHash('sha256')
+			.update(username)
+			.digest('hex')
+			.toString();
+		console.log('userId => ', userId);
+
+		user = new User({ username, userId });
 		await user.save();
 
 		// Respond with a message indicating user was created
@@ -52,13 +69,19 @@ exports.generateRegistrationOptions = async (req, res, next) => {
 
 		const options = await generateRegistrationOptions({
 			rpName: 'FIDO Server',
-			userId: user._id, // replaced with unique user ID from database
+			rpID: 'localhost',
+			userID: userId, // use the generated unique ID
 			userName: username,
 			timeout: 60000,
 			attestationType: 'direct',
 			excludedCredentialIds: [], // in real-world applications, populate with previously registered credential IDs
 		});
 		console.log(options);
+
+		// Save the challenge to the user's record
+		user.challenge = options.challenge;
+		await user.save();
+
 		res.json(options);
 	} catch (error) {
 		console.error(error);
@@ -66,47 +89,89 @@ exports.generateRegistrationOptions = async (req, res, next) => {
 	}
 };
 
-exports.verifyRegistrationData = async(req, res, next) => {
+exports.verifyRegistrationData = async (req, res, next) => {
 	try {
 		// Parse clientDataJSON and attestationObject
-		const { clientDataJSON, attestationObject } = registrationData.response;
-	
-		const clientData = parseAttestationRequest(clientDataJSON);
-		if (clientData.challenge !== originalChallenge) {
-		  throw new Error("Challenge does not match!");
-		}
-	
-		if (clientData.origin !== expectedOrigin) {
-		  throw new Error("Origin does not match!");
-		}
-	
+		const registrationData = req.body;
+		const { loggedInUser, credential } = req.body;
+
+		//Retrieve the challenge
+		const user = await User.findOne({ userId: loggedInUser });
+		const savedChallenge = user.challenge;
+		const origin = 'http://localhost:4200';
+		const rpID = 'localhost';
+		console.log('user =>', user);
+		console.log('savedChallenge =>', savedChallenge);
+
+		console.log(
+			'credential base64 ----------------------------------------- =>',
+			credential
+		);
+		credential.rawId = credential.rawId;
+		credential.response.clientDataJSON = credential.response.clientDataJSON;
+		credential.response.attestationObject =
+			credential.response.attestationObject;
+		console.log(
+			'credential array buffer -------------------------------------- =>',
+			credential
+		);
+
 		// Verify the attestation response
-		const verification = await verifyAttestationResponse({
-		  credential: registrationData,
-		  expectedChallenge: originalChallenge,
-		  expectedOrigin,
-		  // If you have a list of trusted authenticators, you can specify them here:
-		  // trustedAttestationTypes: ['packed', 'tpm', ...],
-		  // trustedDeviceAttestationCerts: [...],
+		const verification = await verifyRegistrationResponse({
+			response: credential,
+			expectedChallenge: savedChallenge,
+			expectedOrigin: origin,
+			expectedRPID: rpID,
 		});
-	
+
 		if (!verification.verified) {
-		  throw new Error("Attestation response is not verified!");
+			throw new Error('Attestation response is not verified!');
 		}
-	
+
+		console.log('Verification success =>', verification);
+
 		// Store the new credential data
-		const { id, type, rawId, response } = registrationData;
-		const { verified, authenticatorInfo } = verification;
-	
-		storeCredentialData({
-		  credentialId: rawId,
-		  publicKey: authenticatorInfo.publicKey,
-		  // ... other metadata like counter value
-		});
-	
-		return true;
-	  } catch (error) {
-		console.error("Verification failed:", error);
+		// await
+		// const { id, type, rawId, response } = registrationData;
+		// const { verified, registrationInfo } = verification;
+
+		// Extract registrationInfo from the verification result
+		const registrationInfo = verification.registrationInfo;
+
+		// Convert Uint8Array values to Buffer
+		user.credential.attestationObject = Buffer.from(
+			registrationInfo.attestationObject
+		);
+		user.credential.credentialPublicKey = Buffer.from(
+			registrationInfo.credentialPublicKey
+		);
+		user.credential.credentialID = Buffer.from(registrationInfo.credentialID);
+
+		// Save other properties from registrationInfo
+		user.credential.fmt = registrationInfo.fmt;
+		user.credential.counter = registrationInfo.counter;
+		user.credential.aaguid = registrationInfo.aaguid;
+		user.credential.credentialType = registrationInfo.credentialType;
+		user.credential.userVerified = registrationInfo.userVerified;
+		user.credential.credentialDeviceType = registrationInfo.credentialDeviceType;
+		user.credential.credentialBackedUp = registrationInfo.credentialBackedUp;
+		user.credential.origin = registrationInfo.origin;
+		user.credential.rpID = registrationInfo.rpID;
+		user.credential.authenticatorExtensionResults = registrationInfo.authenticatorExtensionResults;
+		// If there are other properties in registrationInfo that you want to save, add them similarly
+
+		// Save the updated user document
+		await user.save();
+
+		// storeCredentialData({
+		// 	credentialId: rawId,
+		// 	publicKey: authenticatorInfo.publicKey,
+		// 	// ... other metadata like counter value
+		// });
+
+		res.status(200).send({ message: 'Verification and storage successful!' });
+	} catch (error) {
+		console.error('Verification failed:', error);
 		return false;
-	  }
+	}
 };

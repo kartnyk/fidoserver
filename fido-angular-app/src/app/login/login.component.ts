@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { FidoService } from '../fido.service';
+import * as webauthn from '@github/webauthn-json';
 
 @Component({
   selector: 'app-login',
@@ -23,7 +24,9 @@ export class LoginComponent {
   }
 
   private startWebAuthnRegistration(response: any) {
+    const loggedInUser = response.user.id;
     response.challenge = this.base64UrlToUint8Array(response.challenge);
+    response.user.id = this.base64UrlToUint8Array(response.user.id);
 
     if (response.excludeCredentials) {
       for (let cred of response.excludeCredentials) {
@@ -39,23 +42,37 @@ export class LoginComponent {
           return;
         }
 
+        console.log(
+          'credential array buffer ------------------------- =>',
+          credential
+        );
         const publicKeyCredential = credential as PublicKeyCredential;
         const attestationResponse =
           publicKeyCredential.response as AuthenticatorAttestationResponse;
 
         const registrationData = {
-          id: publicKeyCredential.id,
-          type: publicKeyCredential.type,
-          rawId: Array.from(new Uint8Array(publicKeyCredential.rawId)),
-          response: {
-            clientDataJSON: Array.from(
-              new Uint8Array(attestationResponse.clientDataJSON)
+          loggedInUser: loggedInUser,
+          credential: {
+            id: publicKeyCredential.id,
+            type: publicKeyCredential.type,
+            rawId: this.base64urlEncode(
+              new Uint8Array(publicKeyCredential.rawId)
             ),
-            attestationObject: Array.from(
-              new Uint8Array(attestationResponse.attestationObject)
-            ),
+            response: {
+              clientDataJSON: this.base64urlEncode(
+                new Uint8Array(attestationResponse.clientDataJSON)
+              ),
+              attestationObject: this.base64urlEncode(
+                new Uint8Array(attestationResponse.attestationObject)
+              ),
+            },
           },
         };
+
+        console.log(
+          'credential base64 ------------------------------ =>',
+          registrationData
+        );
 
         this.fidoService.registerWithWebAuthn(registrationData).subscribe(
           (data) => {
@@ -82,5 +99,10 @@ export class LoginComponent {
       outputArray[i] = rawData.charCodeAt(i);
     }
     return outputArray;
+  }
+
+  private base64urlEncode(data: Uint8Array): string {
+    let base64 = btoa(String.fromCharCode(...data));
+    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
 }
