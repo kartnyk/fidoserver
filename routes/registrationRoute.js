@@ -1,9 +1,9 @@
 const express = require('express')
 
 const registrationRouter = express.Router()
-const registartionController = require('../controller/registrationController')
+const registrationController = require('../controller/registrationController')
 
-registrationRouter.post('/generateRegistrationOptions/', registartionController.generateRegistrationOptions)
-registrationRouter.post('/verifyRegistrationData/', registartionController.verifyRegistrationData)
+registrationRouter.post('/generateRegistrationOptions/', registrationController.generateRegistrationOptions)
+registrationRouter.post('/verifyRegistrationData/', registrationController.verifyRegistrationData)
 
 module.exports = registrationRouter

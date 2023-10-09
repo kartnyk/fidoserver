@@ -6,20 +6,32 @@ import { Observable } from 'rxjs';
   providedIn: 'root',
 })
 export class FidoService {
-  private apiUrl = 'http://localhost:3000/fido/register'; // replace with your backend API URL
+  private apiUrl = 'http://localhost:3000/fido'; // replace with your backend API URL
 
   constructor(private http: HttpClient) {}
 
   generateRegistrationOptions(username: string): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/generateRegistrationOptions`, {
+    return this.http.post<any>(`${this.apiUrl}/register/generateRegistrationOptions`, {
       username,
     });
   }
 
   registerWithWebAuthn(publicKeyCredential: any): Observable<any> {
     return this.http.post<any>(
-      `${this.apiUrl}/verifyRegistrationData`,
+      `${this.apiUrl}/register/verifyRegistrationData`,
       publicKeyCredential
+    );
+  }
+
+  generateAuthenticationOptions(username: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/authenticate/generateAuthenticationOptions`, {
+      username,
+    });
+  }
+
+  authenticacteWithWebAuthn(publicKeyCredential: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/authenticate/verifyAuthenticationData`,
+      publicKeyCredential,
     );
   }
 }

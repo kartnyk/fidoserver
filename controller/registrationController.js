@@ -4,9 +4,7 @@ const crypto = require('crypto');
 
 const {
 	generateRegistrationOptions,
-	verifyRegistrationResponse,
-	generateAuthenticationOptions,
-	verifyAuthenticationResponse,
+	verifyRegistrationResponse
 } = simpleWebAuthnServer;
 
 // MongoDB connection
@@ -37,9 +35,25 @@ const userSchema = new mongoose.Schema({
 		authenticatorExtensionResults: String, // or another appropriate type if not a string
 		// Other fields that you may need to store for each credential
 	},
+	authenticator: {
+		credentialID: { type: Buffer, required: false, index: true },
+		credentialPublicKey: { type: Buffer, required: false },
+		counter: { type: Number, required: false },
+		credentialDeviceType: { type: String, enum: ['singleDevice', 'multiDevice'], required: false },
+		credentialBackedUp: { type: Boolean, required: false },
+		// Store as an array of strings in MongoDB
+		transports: [{ type: String, enum: ['usb', 'ble', 'nfc', 'internal'] }]
+	}
 });
 
-const User = mongoose.model('User', userSchema);
+let User;
+if (mongoose.models == null || !mongoose.models.users) {
+	console.log("Registration - Inside no schema")
+	User = mongoose.model('User', userSchema);
+} else {
+	console.log("Registration - Inside present schema")
+	User = mongoose.model('User');
+}
 
 exports.generateRegistrationOptions = async (req, res, next) => {
 	const { username } = req.body;
@@ -49,7 +63,9 @@ exports.generateRegistrationOptions = async (req, res, next) => {
 		let user = await User.findOne({ username });
 		if (user) {
 			// If user exists, throw an error
-			return res.status(400).json({ error: 'User already exists' });
+			return res.status(400).json({ 
+				success: false,
+				message: 'User already exists' });
 		}
 
 		// If user does not exist, create a new user with the generated unique ID
@@ -63,9 +79,6 @@ exports.generateRegistrationOptions = async (req, res, next) => {
 
 		user = new User({ username, userId });
 		await user.save();
-
-		// Respond with a message indicating user was created
-		// res.status(201).json({ message: 'User created', user });
 
 		const options = await generateRegistrationOptions({
 			rpName: 'FIDO Server',
@@ -94,6 +107,7 @@ exports.verifyRegistrationData = async (req, res, next) => {
 		// Parse clientDataJSON and attestationObject
 		const registrationData = req.body;
 		const { loggedInUser, credential } = req.body;
+		console.log("Registration registrationData", registrationData)
 
 		//Retrieve the challenge
 		const user = await User.findOne({ userId: loggedInUser });
@@ -103,18 +117,18 @@ exports.verifyRegistrationData = async (req, res, next) => {
 		console.log('user =>', user);
 		console.log('savedChallenge =>', savedChallenge);
 
-		console.log(
-			'credential base64 ----------------------------------------- =>',
-			credential
-		);
+		// console.log(
+		// 	'credential base64 ----------------------------------------- =>',
+		// 	credential
+		// );
 		credential.rawId = credential.rawId;
 		credential.response.clientDataJSON = credential.response.clientDataJSON;
 		credential.response.attestationObject =
 			credential.response.attestationObject;
-		console.log(
-			'credential array buffer -------------------------------------- =>',
-			credential
-		);
+		// console.log(
+		// 	'credential array buffer -------------------------------------- =>',
+		// 	credential
+		// );
 
 		// Verify the attestation response
 		const verification = await verifyRegistrationResponse({
@@ -131,11 +145,6 @@ exports.verifyRegistrationData = async (req, res, next) => {
 		console.log('Verification success =>', verification);
 
 		// Store the new credential data
-		// await
-		// const { id, type, rawId, response } = registrationData;
-		// const { verified, registrationInfo } = verification;
-
-		// Extract registrationInfo from the verification result
 		const registrationInfo = verification.registrationInfo;
 
 		// Convert Uint8Array values to Buffer
@@ -160,6 +169,12 @@ exports.verifyRegistrationData = async (req, res, next) => {
 		user.credential.authenticatorExtensionResults = registrationInfo.authenticatorExtensionResults;
 		// If there are other properties in registrationInfo that you want to save, add them similarly
 
+		user.authenticator.credentialID = Buffer.from(registrationInfo.credentialID);
+		user.authenticator.credentialPublicKey = Buffer.from(
+			registrationInfo.credentialPublicKey
+		);
+		user.authenticator.counter = registrationInfo.counter;
+
 		// Save the updated user document
 		await user.save();
 
@@ -169,7 +184,10 @@ exports.verifyRegistrationData = async (req, res, next) => {
 		// 	// ... other metadata like counter value
 		// });
 
-		res.status(200).send({ message: 'Verification and storage successful!' });
+		res.status(200).send({ 
+			success: true,
+			message: 'Verification and storage successful!' 
+		});
 	} catch (error) {
 		console.error('Verification failed:', error);
 		return false;
