@@ -29,11 +29,11 @@ export class LoginComponent {
     const { challenge, allowCredentials, timeout, rpID, userVerification } =
       response;
 
-    type AllowedCredential = {
-      type: string;
-      id: string;
-      transports: string[];
-    };
+    // type AllowedCredential = {
+    //   type: string;
+    //   id: string;
+    //   transports: string[];
+    // };
 
     // 2. Pass this response to webAuthn's browser API to Authenticate
     // let c =  Uint8Array.from(atob(challenge), (c) => c.charCodeAt(0))
@@ -52,6 +52,14 @@ export class LoginComponent {
     //     userVerification: userVerification as UserVerificationRequirement,
     //   };
     response.challenge = this.base64ToBuffer(response.challenge);
+    response.allowCredentials = response.allowCredentials.map((cred: any) => {
+      if (typeof cred.id === 'string') {
+          cred.id = this.base64ToBuffer(cred.id);
+      }
+      return cred;
+  });
+  
+  
     console.log('Response after conversion', response);
     navigator.credentials
       .get({ publicKey: response })
@@ -247,8 +255,7 @@ export class LoginComponent {
 
   private base64UrlToBase64(base64Url: string): string {
     return (
-      base64Url.replace(/-/g, '+').replace(/_/g, '/') +
-      '=='.slice(0, (3 - (base64Url.length % 4)) % 4)
+      base64Url.replace(/-/g, '+').replace(/_/g, '/')
     );
   }
 

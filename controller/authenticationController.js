@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const simpleWebAuthnServer = require('@simplewebauthn/server');
 const crypto = require('crypto');
+const { use } = require('../routes/registrationRoute');
 
 const {
 	generateAuthenticationOptions,
@@ -15,34 +16,54 @@ mongoose
 	.catch((err) => console.error('Could not connect to MongoDB', err));
 
 // User schema and model
+// Define the Credential schema
+const credentialSchema = new mongoose.Schema({
+	fmt: String,
+	counter: Number,
+	aaguid: String,
+	credentialID: { type: Buffer, required: false },
+	credentialPublicKey: { type: Buffer, required: false },
+	credentialType: String,
+	attestationObject: { type: Buffer, required: false },
+	userVerified: Boolean,
+	credentialDeviceType: String,
+	credentialBackedUp: Boolean,
+	origin: String,
+	rpID: String,
+	authenticatorExtensionResults: String, // or another appropriate type if not a string
+	// Other fields that you may need to store for each credential
+});
+
+// Define the Authenticator schema
+const authenticatorSchema = new mongoose.Schema({
+	credentialID: { type: Buffer, required: false, index: true },
+	credentialPublicKey: { type: Buffer, required: false },
+	counter: { type: Number, required: false },
+	credentialDeviceType: {
+		type: String,
+		enum: ['singleDevice', 'multiDevice'],
+		required: false,
+	},
+	credentialBackedUp: { type: Boolean, required: false },
+	// Store as an array of strings in MongoDB
+	transports: [{ type: String, enum: ['usb', 'ble', 'nfc', 'internal'] }],
+});
+
+// Define the main User schema
 const userSchema = new mongoose.Schema({
 	username: String,
 	userId: String,
 	challenge: String,
-	credential: {
-		fmt: String,
-		counter: Number,
-		aaguid: String,
-		credentialID: { type: Buffer, required: false },
-		credentialPublicKey: { type: Buffer, required: false },
-		credentialType: String,
-		attestationObject: { type: Buffer, required: false },
-		userVerified: Boolean,
-		credentialDeviceType: String,
-		credentialBackedUp: Boolean,
-		origin: String,
-		rpID: String,
-		authenticatorExtensionResults: String, // or another appropriate type if not a string
-		// Other fields that you may need to store for each credential
-	},
+	credential: credentialSchema,
+	authenticators: [authenticatorSchema],
 });
 
 let User;
-if (mongoose.models == null || !mongoose.models.User) {
-	console.log("Authentication - Inside no schema")
+if (!mongoose.models.User) {
+	console.log('Registration - Inside no schema');
 	User = mongoose.model('User', userSchema);
 } else {
-	console.log("Authentication - Inside present schema")
+	console.log('Registration - Inside present schema');
 	User = mongoose.model('User');
 }
 
@@ -57,9 +78,14 @@ exports.generateAuthenticationOptions = async (req, res, next) => {
 			// If user exists, throw an error
 			return res.status(400).json({ error: 'Invalid Username, User does not exist' });
 		}
-
+		let userAuthenticators = user.authenticators;
         const options = await generateAuthenticationOptions({
-            allowCredentials: [],
+            allowCredentials: userAuthenticators.map(authenticator => ({
+				id: authenticator.credentialID,
+				type: 'public-key',
+				// Optional
+				// transports: authenticator.transports,
+			  })),			
             userVerification: 'preferred',
 		});
 		console.log(options);
@@ -88,7 +114,19 @@ exports.verifyAuthenticationData = async (req, res, next) => {
 		const savedChallenge = user.challenge;
 		const origin = 'http://localhost:4200';
 		const rpID = 'localhost';
-		const authenticator = user.authenticator;
+		
+		console.log("users", user)
+		// const buffer = Buffer.from(credential.id.read(0, credential.id.length()));
+		// const credntialId = buffer.toString('base64');
+		// console.log("base64String", credntialId);
+		const authenticator = user.authenticators.find(authenticator => authenticator.authenticatorId === credential.credentialID);
+		console.log("users", user)
+		console.log("user.authenticators", user.authenticators)
+
+		if (!authenticator) {
+			throw new Error(`Could not find authenticator ${credential.id} for user ${user.username}`);
+		}
+		
 		// console.log('user =>', user);
 		console.log('savedChallenge =>', savedChallenge);
 
@@ -125,6 +163,9 @@ exports.verifyAuthenticationData = async (req, res, next) => {
 		const { authenticationInfo } = verification;
 		const { newCounter } = authenticationInfo;
 
+		if (!user.authenticator) {
+			user.authenticator = {};
+		}
 		user.authenticator.counter = newCounter;
 
 		// Save the updated user document
