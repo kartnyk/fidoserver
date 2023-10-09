@@ -70,25 +70,25 @@ exports.generateRegistrationOptions = async (req, res, next) => {
 	try {
 		// Check if the user already exists
 		let user = await User.findOne({ username });
+		let userAuthenticators = [];
+		let userId;
+		if (!user) {
+			userId = crypto
+				.createHash('sha256')
+				.update(username)
+				.digest('hex')
+				.toString();
+			console.log('userId => ', userId);
+
+			user = new User({ username, userId });
+			await user.save();
+		}
 		if (user) {
-			// If user exists, throw an error
-			return res.status(400).json({
-				success: false,
-				message: 'User already exists',
-			});
+			userAuthenticators = user.authenticators;
+			userId = user.userId
 		}
 
-		// If user does not exist, create a new user with the generated unique ID
-		// Generate a unique ID for the user based on the username
-		const userId = crypto
-			.createHash('sha256')
-			.update(username)
-			.digest('hex')
-			.toString();
-		console.log('userId => ', userId);
-
-		user = new User({ username, userId });
-		await user.save();
+		console.log("userAuthenticators", userAuthenticators);
 
 		const options = await generateRegistrationOptions({
 			rpName: 'FIDO Server',
@@ -97,7 +97,12 @@ exports.generateRegistrationOptions = async (req, res, next) => {
 			userName: username,
 			timeout: 60000,
 			attestationType: 'direct',
-			excludedCredentialIds: [], // in real-world applications, populate with previously registered credential IDs
+			excludeCredentials: userAuthenticators.map((authenticator) => ({
+				id: authenticator.credentialID,
+				type: 'public-key',
+				// Optional
+				// transports: authenticator.transports,
+			})),
 		});
 		console.log(options);
 
@@ -157,7 +162,7 @@ exports.verifyRegistrationData = async (req, res, next) => {
 		// Store the new credential data
 		const registrationInfo = verification.registrationInfo;
 		if (!user.credential) {
-			console.log("Initializing User credential")
+			console.log('Initializing User credential');
 			user.credential = {};
 		}
 		// Convert Uint8Array values to Buffer
@@ -192,6 +197,7 @@ exports.verifyRegistrationData = async (req, res, next) => {
 
 		// Save the updated user document
 		const newAuthenticator = {
+			//Bug - Authentication Verification
 			credentialID: Buffer.from(registrationInfo.credentialID),
 			credentialPublicKey: Buffer.from(registrationInfo.credentialPublicKey),
 			counter: registrationInfo.counter,
@@ -201,7 +207,6 @@ exports.verifyRegistrationData = async (req, res, next) => {
 		};
 		user.authenticators.push(newAuthenticator);
 		await user.save();
-		
 
 		// Push the new authenticator into the user's authenticators array
 		// await User.findOneAndUpdate(

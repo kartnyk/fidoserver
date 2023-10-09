@@ -108,18 +108,22 @@ exports.verifyAuthenticationData = async (req, res, next) => {
 		const { loggedInUser, credential } = req.body;
 
 		//Retrieve the challenge
-		// console.log("authentication loggedInUser", authenticationData)
+		console.log("authentication loggedInUser", authenticationData)
 		const user = await User.findOne({ username: loggedInUser });
 		// console.log("verify authenticator data, User", user)
 		const savedChallenge = user.challenge;
 		const origin = 'http://localhost:4200';
 		const rpID = 'localhost';
 		
-		console.log("users", user)
+		
+		// console.log("users", user)
 		// const buffer = Buffer.from(credential.id.read(0, credential.id.length()));
 		// const credntialId = buffer.toString('base64');
 		// console.log("base64String", credntialId);
 		const authenticator = user.authenticators.find(authenticator => authenticator.authenticatorId === credential.credentialID);
+		// const authenticator = user.authenticators.find(authenticator => authenticator.credentialID === credential.id);
+		//Bug - Authentication Verification
+
 		console.log("users", user)
 		console.log("user.authenticators", user.authenticators)
 
@@ -128,6 +132,7 @@ exports.verifyAuthenticationData = async (req, res, next) => {
 		}
 		
 		// console.log('user =>', user);
+		console.log("selected authenticator", authenticator)
 		console.log('savedChallenge =>', savedChallenge);
 
 		console.log(
