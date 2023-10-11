@@ -120,19 +120,29 @@ exports.verifyAuthenticationData = async (req, res, next) => {
 		// const buffer = Buffer.from(credential.id.read(0, credential.id.length()));
 		// const credntialId = buffer.toString('base64');
 		// console.log("base64String", credntialId);
-		const authenticator = user.authenticators.find(authenticator => authenticator.authenticatorId === credential.credentialID);
+		// const authenticator = user.authenticators.find(authenticator => authenticator.authenticatorId === credential.credentialID);
+
+		console.log("this is credential", credential)
+		const base64CredentialID = Buffer.from(credential.id, 'base64').toString('base64'); // Convert the credential.id to base64 format
+
+		const matchingAuthenticator = user.authenticators.find(authenticator => {
+			return authenticator.credentialID.toString('base64') === base64CredentialID;
+		});
 		// const authenticator = user.authenticators.find(authenticator => authenticator.credentialID === credential.id);
 		//Bug - Authentication Verification
 
-		console.log("users", user)
 		console.log("user.authenticators", user.authenticators)
+		console.log("authenticator response credential authenticator", matchingAuthenticator)
+		console.log("credential.id", credential.id)
+		console.log("authenticator.credentialID", matchingAuthenticator.credentialID)
+		
 
-		if (!authenticator) {
-			throw new Error(`Could not find authenticator ${credential.id} for user ${user.username}`);
+		if (!matchingAuthenticator) {
+			throw new Error(`Could not find authenticator ${matchingAuthenticator.credentialID} for user ${user.username}`);
 		}
 		
 		// console.log('user =>', user);
-		console.log("selected authenticator", authenticator)
+		console.log("selected authenticator", matchingAuthenticator)
 		console.log('savedChallenge =>', savedChallenge);
 
 		console.log(
@@ -154,7 +164,7 @@ exports.verifyAuthenticationData = async (req, res, next) => {
 			expectedChallenge: savedChallenge,
 			expectedOrigin: origin,
 			expectedRPID: rpID,
-			authenticator: authenticator
+			authenticator: matchingAuthenticator
 		});
 
 		console.log("Authentication verification", verification)

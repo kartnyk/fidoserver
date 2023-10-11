@@ -227,3 +227,8 @@ exports.verifyRegistrationData = async (req, res, next) => {
 		});
 	}
 };
+
+function uint8ArrayToBase64NoPadding(buffer) {
+    let base64 = Buffer.from(buffer).toString('base64');
+    return base64.replace(/=+$/, ''); // Remove padding
+}
