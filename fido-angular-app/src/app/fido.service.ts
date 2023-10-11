@@ -6,7 +6,7 @@ import { Observable } from 'rxjs';
   providedIn: 'root',
 })
 export class FidoService {
-  private apiUrl = 'http://localhost:3000/fido'; // replace with your backend API URL
+  private apiUrl = 'http://localhost:3000/fido';
 
   constructor(private http: HttpClient) {}
 

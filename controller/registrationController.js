@@ -42,7 +42,6 @@ const authenticatorSchema = new mongoose.Schema({
 		required: false,
 	},
 	credentialBackedUp: { type: Boolean, required: false },
-	// Store as an array of strings in MongoDB
 	transports: [{ type: String, enum: ['usb', 'ble', 'nfc', 'internal'] }],
 });
 
@@ -66,7 +65,6 @@ if (!mongoose.models.User) {
 
 exports.generateRegistrationOptions = async (req, res, next) => {
 	const { username } = req.body;
-
 	try {
 		// Check if the user already exists
 		let user = await User.findOne({ username });
@@ -78,18 +76,13 @@ exports.generateRegistrationOptions = async (req, res, next) => {
 				.update(username)
 				.digest('hex')
 				.toString();
-			console.log('userId => ', userId);
-
 			user = new User({ username, userId });
 			await user.save();
 		}
 		if (user) {
 			userAuthenticators = user.authenticators;
-			userId = user.userId
+			userId = user.userId;
 		}
-
-		console.log("userAuthenticators", userAuthenticators);
-
 		const options = await generateRegistrationOptions({
 			rpName: 'FIDO Server',
 			rpID: 'localhost',
@@ -104,12 +97,9 @@ exports.generateRegistrationOptions = async (req, res, next) => {
 				// transports: authenticator.transports,
 			})),
 		});
-		console.log(options);
-
 		// Save the challenge to the user's record
 		user.challenge = options.challenge;
 		await user.save();
-
 		res.json(options);
 	} catch (error) {
 		console.error(error);
@@ -122,30 +112,17 @@ exports.verifyRegistrationData = async (req, res, next) => {
 		// Parse clientDataJSON and attestationObject
 		const registrationData = req.body;
 		const { loggedInUser, credential } = req.body;
-		console.log('Registration registrationData', registrationData);
 
 		//Retrieve the challenge
 		const user = await User.findOne({ userId: loggedInUser });
 		const savedChallenge = user.challenge;
 		const origin = 'http://localhost:4200';
 		const rpID = 'localhost';
-		console.log('user =>', user);
-		console.log('savedChallenge =>', savedChallenge);
-
-		// console.log(
-		// 	'credential base64 ----------------------------------------- =>',
-		// 	credential
-		// );
 		credential.rawId = credential.rawId;
 		credential.response.clientDataJSON = credential.response.clientDataJSON;
 		credential.response.attestationObject =
 			credential.response.attestationObject;
-		// console.log(
-		// 	'credential array buffer -------------------------------------- =>',
-		// 	credential
-		// );
 
-		// Verify the attestation response
 		const verification = await verifyRegistrationResponse({
 			response: credential,
 			expectedChallenge: savedChallenge,
@@ -157,12 +134,9 @@ exports.verifyRegistrationData = async (req, res, next) => {
 			throw new Error('Attestation response is not verified!');
 		}
 
-		console.log('Verification success =>', verification);
-
 		// Store the new credential data
 		const registrationInfo = verification.registrationInfo;
 		if (!user.credential) {
-			console.log('Initializing User credential');
 			user.credential = {};
 		}
 		// Convert Uint8Array values to Buffer
@@ -187,33 +161,17 @@ exports.verifyRegistrationData = async (req, res, next) => {
 		user.credential.rpID = registrationInfo.rpID;
 		user.credential.authenticatorExtensionResults =
 			registrationInfo.authenticatorExtensionResults;
-		// If there are other properties in registrationInfo that you want to save, add them similarly
-
-		// user.authenticator.credentialID = Buffer.from(registrationInfo.credentialID);
-		// user.authenticator.credentialPublicKey = Buffer.from(
-		// 	registrationInfo.credentialPublicKey
-		// );
-		// user.authenticator.counter = registrationInfo.counter;
 
 		// Save the updated user document
 		const newAuthenticator = {
-			//Bug - Authentication Verification
 			credentialID: Buffer.from(registrationInfo.credentialID),
 			credentialPublicKey: Buffer.from(registrationInfo.credentialPublicKey),
 			counter: registrationInfo.counter,
 			credentialDeviceType: registrationInfo.credentialDeviceType,
 			credentialBackedUp: registrationInfo.credentialBackedUp,
-			// Add other fields if necessary
 		};
 		user.authenticators.push(newAuthenticator);
 		await user.save();
-
-		// Push the new authenticator into the user's authenticators array
-		// await User.findOneAndUpdate(
-		// 	{ userId: loggedInUser },
-		// 	{ $push: { authenticators: newAuthenticator } },
-		// 	{ useFindAndModify: false }
-		// );
 
 		res.status(200).send({
 			success: true,
@@ -227,8 +185,3 @@ exports.verifyRegistrationData = async (req, res, next) => {
 		});
 	}
 };
-
-function uint8ArrayToBase64NoPadding(buffer) {
-    let base64 = Buffer.from(buffer).toString('base64');
-    return base64.replace(/=+$/, ''); // Remove padding
-}

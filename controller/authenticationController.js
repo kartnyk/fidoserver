@@ -3,10 +3,8 @@ const simpleWebAuthnServer = require('@simplewebauthn/server');
 const crypto = require('crypto');
 const { use } = require('../routes/registrationRoute');
 
-const {
-	generateAuthenticationOptions,
-	verifyAuthenticationResponse,
-} = simpleWebAuthnServer;
+const { generateAuthenticationOptions, verifyAuthenticationResponse } =
+	simpleWebAuthnServer;
 
 // MongoDB connection
 const dbURI = 'mongodb://localhost:27017/fidodb'; // replace with your MongoDB URI
@@ -68,27 +66,27 @@ if (!mongoose.models.User) {
 }
 
 exports.generateAuthenticationOptions = async (req, res, next) => {
-    const { username } = req.body;
+	const { username } = req.body;
 
-    try {
+	try {
 		// Retrieve the user
 		let user = await User.findOne({ username: username });
-        // console.log("Auth Username", user)
 		if (!user) {
-			// If user exists, throw an error
-			return res.status(400).json({ error: 'Invalid Username, User does not exist' });
+			// If user exists, send an error
+			return res
+				.status(500)
+				.json({ error: 'Invalid Username, User does not exist' });
 		}
 		let userAuthenticators = user.authenticators;
-        const options = await generateAuthenticationOptions({
-            allowCredentials: userAuthenticators.map(authenticator => ({
+		const options = await generateAuthenticationOptions({
+			allowCredentials: userAuthenticators.map((authenticator) => ({
 				id: authenticator.credentialID,
 				type: 'public-key',
 				// Optional
 				// transports: authenticator.transports,
-			  })),			
-            userVerification: 'preferred',
+			})),
+			userVerification: 'preferred',
 		});
-		console.log(options);
 
 		// Save the challenge to the user's record
 		user.challenge = options.challenge;
@@ -99,7 +97,7 @@ exports.generateAuthenticationOptions = async (req, res, next) => {
 		console.error(error);
 		res.status(500).json({ error: 'Internal Server Error' });
 	}
-}
+};
 
 exports.verifyAuthenticationData = async (req, res, next) => {
 	try {
@@ -108,71 +106,37 @@ exports.verifyAuthenticationData = async (req, res, next) => {
 		const { loggedInUser, credential } = req.body;
 
 		//Retrieve the challenge
-		console.log("authentication loggedInUser", authenticationData)
 		const user = await User.findOne({ username: loggedInUser });
-		// console.log("verify authenticator data, User", user)
 		const savedChallenge = user.challenge;
 		const origin = 'http://localhost:4200';
 		const rpID = 'localhost';
-		
-		
-		// console.log("users", user)
-		// const buffer = Buffer.from(credential.id.read(0, credential.id.length()));
-		// const credntialId = buffer.toString('base64');
-		// console.log("base64String", credntialId);
-		// const authenticator = user.authenticators.find(authenticator => authenticator.authenticatorId === credential.credentialID);
 
-		console.log("this is credential", credential)
-		const base64CredentialID = Buffer.from(credential.id, 'base64').toString('base64'); // Convert the credential.id to base64 format
-
-		const matchingAuthenticator = user.authenticators.find(authenticator => {
-			return authenticator.credentialID.toString('base64') === base64CredentialID;
+		const base64CredentialID = Buffer.from(credential.id, 'base64').toString(
+			'base64'
+		); // Convert the credential.id to base64 format
+		const matchingAuthenticator = user.authenticators.find((authenticator) => {
+			return (
+				authenticator.credentialID.toString('base64') === base64CredentialID
+			);
 		});
-		// const authenticator = user.authenticators.find(authenticator => authenticator.credentialID === credential.id);
-		//Bug - Authentication Verification
-
-		console.log("user.authenticators", user.authenticators)
-		console.log("authenticator response credential authenticator", matchingAuthenticator)
-		console.log("credential.id", credential.id)
-		console.log("authenticator.credentialID", matchingAuthenticator.credentialID)
-		
 
 		if (!matchingAuthenticator) {
-			throw new Error(`Could not find authenticator ${matchingAuthenticator.credentialID} for user ${user.username}`);
+			throw new Error(
+				`Could not find authenticator ${matchingAuthenticator.credentialID} for user ${user.username}`
+			);
 		}
-		
-		// console.log('user =>', user);
-		console.log("selected authenticator", matchingAuthenticator)
-		console.log('savedChallenge =>', savedChallenge);
-
-		console.log(
-			'authentication credential base64 ----------------------------------------- =>',
-			credential
-		);
-		// credential.rawId = credential.rawId;
-		// credential.response.clientDataJSON = credential.response.clientDataJSON;
-		// credential.response.attestationObject =
-		// 	credential.response.attestationObject;
-		// console.log(
-		// 	'credential array buffer -------------------------------------- =>',
-		// 	credential
-		// );
-
 		// Verify the attestation response
 		const verification = await verifyAuthenticationResponse({
 			response: credential,
 			expectedChallenge: savedChallenge,
 			expectedOrigin: origin,
 			expectedRPID: rpID,
-			authenticator: matchingAuthenticator
+			authenticator: matchingAuthenticator,
 		});
 
-		console.log("Authentication verification", verification)
 		if (!verification.verified) {
 			throw new Error('Assertion response is not verified!');
 		}
-
-		console.log('Verification success =>', verification);
 
 		// Update the new counter
 		const { authenticationInfo } = verification;
@@ -186,22 +150,15 @@ exports.verifyAuthenticationData = async (req, res, next) => {
 		// Save the updated user document
 		await user.save();
 
-		// storeCredentialData({
-		// 	credentialId: rawId,
-		// 	publicKey: authenticatorInfo.publicKey,
-		// 	// ... other metadata like counter value
-		// });
-
-		res.status(200).send({ 
+		res.status(200).send({
 			success: true,
-			message: 'Authentication and new counter updation successful!' });
+			message: 'Authentication and new counter updation successful!',
+		});
 	} catch (error) {
 		console.error('Authentication failed:', error);
-		res.status(400).send(
-			{
-				success: false,
-				message: 'Authentication Failed!'
-			}
-		)
+		res.status(400).send({
+			success: false,
+			message: 'Authentication Failed!',
+		});
 	}
 };

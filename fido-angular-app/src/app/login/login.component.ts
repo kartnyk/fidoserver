@@ -15,12 +15,11 @@ export class LoginComponent {
   onLogin() {
     this.fidoService.generateAuthenticationOptions(this.username).subscribe(
       (response) => {
-        console.log('Authentication Options', response);
         this.startWebAuthnAuthentication(response);
       },
       (error) => {
         console.error('Error:', error);
-        window.Error(error)
+        window.Error(error);
       }
     );
   }
@@ -28,55 +27,23 @@ export class LoginComponent {
   private startWebAuthnAuthentication(response: any) {
     const { challenge, allowCredentials, timeout, rpID, userVerification } =
       response;
-
-    // type AllowedCredential = {
-    //   type: string;
-    //   id: string;
-    //   transports: string[];
-    // };
-
-    // 2. Pass this response to webAuthn's browser API to Authenticate
-    // let c =  Uint8Array.from(atob(challenge), (c) => c.charCodeAt(0))
-    // console.log("cccccccccccccccc", c)
-    // const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions =
-    //   {
-    //     challenge: Uint8Array.from(atob(challenge), (c) => c.charCodeAt(0)),
-    //     allowCredentials: [],
-    //     // allowCredentials: allowCredentials.map((cred: AllowedCredential) => ({
-    //     //   type: cred.type as PublicKeyCredentialType,
-    //     //   id: Uint8Array.from(atob(cred.id), (c) => c.charCodeAt(0)),
-    //     //   transports: cred.transports as AuthenticatorTransport[],
-    //     // })),
-    //     timeout,
-    //     rpId: rpID,
-    //     userVerification: userVerification as UserVerificationRequirement,
-    //   };
     response.challenge = this.base64ToBuffer(response.challenge);
     response.allowCredentials = response.allowCredentials.map((cred: any) => {
       if (typeof cred.id === 'string') {
-          cred.id = this.base64ToBuffer(cred.id);
+        cred.id = this.base64ToBuffer(cred.id);
       }
       return cred;
-  });
-  
-  
-    console.log('Response after conversion', response);
+    });
+
     navigator.credentials
       .get({ publicKey: response })
       .then((credential: Credential | null) => {
         if (!credential) {
           console.error('No credentials returned from WebAuthn API');
-          window.Error('Error Authenticating, Please Try Again!')
+          window.Error('Error Authenticating, Please Try Again!');
           return;
         }
-
-        console.log(
-          'Authentication credential array buffer ------------------------- =>',
-          credential
-        );
         const loggedInUser = this.username;
-        console.log('loggedInUser', loggedInUser);
-
         const publicKeyCredential = credential as PublicKeyCredential;
         const assertionResponse =
           publicKeyCredential.response as AuthenticatorAssertionResponse;
@@ -110,31 +77,25 @@ export class LoginComponent {
           },
         };
 
-        console.log(
-          'credential base64 for Authentication ------------------------------ =>',
-          authenticationData
-        );
-
         this.fidoService
           .authenticacteWithWebAuthn(authenticationData)
           .subscribe(
             (data) => {
-              console.log(data);
               if (data.success) {
-                window.alert("Authentication Success")
+                window.alert('Authentication Success');
               } else {
-                window.alert("Authentication Failed")
+                window.alert('Authentication Failed');
               }
             },
             (error) => {
               console.error('Error:', error);
-              window.Error(error)
+              window.Error(error);
             }
           );
       })
       .catch((error) => {
         console.error('WebAuthn Authentication error:', error);
-        window.Error(error)
+        window.Error(error);
       });
   }
 
@@ -145,7 +106,7 @@ export class LoginComponent {
       },
       (error) => {
         console.error('Error:', error);
-        window.Error(error)
+        window.Error(error);
       }
     );
   }
@@ -166,14 +127,9 @@ export class LoginComponent {
       .then((credential: Credential | null) => {
         if (!credential) {
           console.error('No credentials returned from WebAuthn API');
-          window.Error('Error while registering, Try again')
+          window.Error('Error while registering, Try again');
           return;
         }
-
-        console.log(
-          'Registration credential array buffer ------------------------- =>',
-          credential
-        );
         const publicKeyCredential = credential as PublicKeyCredential;
         const attestationResponse =
           publicKeyCredential.response as AuthenticatorAttestationResponse;
@@ -196,30 +152,23 @@ export class LoginComponent {
             },
           },
         };
-
-        console.log(
-          'credential base64 ------------------------------ =>',
-          registrationData
-        );
-
         this.fidoService.registerWithWebAuthn(registrationData).subscribe(
           (data) => {
-            console.log(data);
             if (data.success) {
-              window.alert("Registration Success")
+              window.alert('Registration Success');
             } else {
-              window.alert("Registration Failed")
+              window.alert('Registration Failed');
             }
           },
           (error) => {
             console.error('Error:', error);
-            window.Error(error)
+            window.Error(error);
           }
         );
       })
       .catch((error) => {
         console.error('WebAuthn Registration error:', error);
-        window.Error(error)
+        window.Error(error);
       });
   }
 
@@ -242,8 +191,6 @@ export class LoginComponent {
 
   private base64ToBuffer(base64: string): ArrayBuffer {
     const safeBase64 = this.base64UrlToBase64(base64);
-    console.log('base64', base64);
-    console.log('safeBase64', safeBase64);
     const binaryString = atob(safeBase64);
     const len = binaryString.length;
     const bytes = new Uint8Array(len);
@@ -254,16 +201,6 @@ export class LoginComponent {
   }
 
   private base64UrlToBase64(base64Url: string): string {
-    return (
-      base64Url.replace(/-/g, '+').replace(/_/g, '/')
-    );
+    return base64Url.replace(/-/g, '+').replace(/_/g, '/');
   }
-
-  // private safeAtob(base64: string): string {
-  //   // Add padding to the Base64 string to make its length a multiple of 4
-  //   while (base64.length % 4 !== 0) {
-  //     base64 += '=';
-  //   }
-  //   return atob(base64);
-  // }
 }
