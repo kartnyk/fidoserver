@@ -1,0 +1,7 @@
+I hope this message finds you well. I'm reaching out to discuss the DI-FIDO integration POC. Based on our previous discussions, it seems we only require the FIDO-related functionalities (Registration and Login) and not the full range of DI functionalities at this moment.
+
+To streamline this process, I propose that we limit the DI UI screens to only those necessary for supporting FIDO functionalities. Currently, having the di-auth-app (server code) operational is a prerequisite for running the DI UI, creating an additional dependency that appears unnecessary since we are not utilizing all DI functionalities.
+
+To mitigate this, I am considering separating the Login and Registration screens from the DI UI's angular project, creating an independent angular project exclusively for FIDO. This modification will make the integration more lightweight and manageable.
+
+Please let me know if this approach aligns with our objectives and if I can proceed with this adjustment.
