@@ -1,37 +1,34 @@
-const AWS = require('aws-sdk');
-const rds = new AWS.RDSDataService({ region: 'us-east-1' }); // Replace 'us-east-1' with your AWS region
+const mysql = require('mysql2/promise');
 
 exports.handler = async (event) => {
-    // Replace these with your actual Aurora MySQL database credentials and connection details
-    const dbClusterArn = 'arn:aws:rds:us-east-1:123456789012:cluster:your-cluster-name';
-    const masterUsername = 'your-master-username';
-    const masterPassword = 'your-master-password';
-    const dbName = 'your-database-name';
-    const sqlStatement = 'SELECT * FROM your_table_name'; // Replace with your SQL query
+    // Configure database connection
+    const connection = await mysql.createConnection({
+        host: 'your-aurora-cluster-endpoint',
+        user: 'your-username',
+        password: 'your-password',
+        database: 'fdb'
+    });
 
     try {
-        const params = {
-            dbClusterOrInstanceArn: dbClusterArn,
-            secretArn: 'arn:aws:secretsmanager:us-east-1:123456789012:secret:your-secret-name',
-            database: dbName,
-            sql: sqlStatement,
-            resourceArn: dbClusterArn,
-            includeResultMetadata: true
-        };
+        // Construct the SQL query with hardcoded values
+        const query = "UPDATE User SET UserName = 'NewName', UserEmail = 'newemail@example.com' WHERE UserID = 1";
 
-        const data = await rds.executeStatement(params).promise();
+        // Execute the query
+        const [result] = await connection.execute(query);
 
-        console.log('Query Result:', data.records);
+        // Close the connection
+        await connection.end();
 
         return {
             statusCode: 200,
-            body: JSON.stringify(data.records),
+            body: JSON.stringify(result)
         };
     } catch (error) {
-        console.error('Error:', error);
+        console.error(error);
+        await connection.end();
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: 'Internal Server Error' }),
+            body: JSON.stringify(error)
         };
     }
 };
