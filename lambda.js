@@ -1,34 +1,44 @@
-const mysql = require('mysql2/promise');
+const mysql = require('mysql');
 
 exports.handler = async (event) => {
-    // Configure database connection
-    const connection = await mysql.createConnection({
-        host: 'your-aurora-cluster-endpoint',
-        user: 'your-username',
-        password: 'your-password',
-        database: 'fdb'
-    });
+  const connection = mysql.createConnection({
+    host: 'your-aurora-hostname',
+    user: 'your-db-username',
+    password: 'your-db-password',
+    database: 'your-db-name',
+  });
 
-    try {
-        // Construct the SQL query with hardcoded values
-        const query = "UPDATE User SET UserName = 'NewName', UserEmail = 'newemail@example.com' WHERE UserID = 1";
+  try {
+    // Connect to the database
+    connection.connect();
 
-        // Execute the query
-        const [result] = await connection.execute(query);
+    // Query the database
+    const results = await queryDatabase(connection);
 
-        // Close the connection
-        await connection.end();
-
-        return {
-            statusCode: 200,
-            body: JSON.stringify(result)
-        };
-    } catch (error) {
-        console.error(error);
-        await connection.end();
-        return {
-            statusCode: 500,
-            body: JSON.stringify(error)
-        };
-    }
+    return {
+      statusCode: 200,
+      body: JSON.stringify(results),
+    };
+  } catch (error) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ message: 'Error connecting to the database' }),
+    };
+  } finally {
+    // Close the database connection
+    connection.end();
+  }
 };
+
+function queryDatabase(connection) {
+  return new Promise((resolve, reject) => {
+    const query = 'SELECT * FROM your_table_name';
+    connection.query(query, (error, results) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(results);
+      }
+    });
+  });
+}
