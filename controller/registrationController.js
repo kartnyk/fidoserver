@@ -1,127 +1,80 @@
-const mongoose = require('mongoose');
+const mysql = require('mysql');
 const simpleWebAuthnServer = require('@simplewebauthn/server');
 const crypto = require('crypto');
+const util = require('util');
 
 const { generateRegistrationOptions, verifyRegistrationResponse } =
 	simpleWebAuthnServer;
 
-// MongoDB connection
-const dbURI = 'mongodb://localhost:27017/fidodb'; // replace with your MongoDB URI
-mongoose
-	.connect(dbURI, { useNewUrlParser: true, useUnifiedTopology: true })
-	.then(() => console.log('Connected to MongoDB'))
-	.catch((err) => console.error('Could not connect to MongoDB', err));
-
-// User schema and model
-// Define the Credential schema
-const credentialSchema = new mongoose.Schema({
-	fmt: String,
-	counter: Number,
-	aaguid: String,
-	credentialID: { type: Buffer, required: false },
-	credentialPublicKey: { type: Buffer, required: false },
-	credentialType: String,
-	attestationObject: { type: Buffer, required: false },
-	userVerified: Boolean,
-	credentialDeviceType: String,
-	credentialBackedUp: Boolean,
-	origin: String,
-	rpID: String,
-	authenticatorExtensionResults: String, // or another appropriate type if not a string
-	// Other fields that you may need to store for each credential
+// Creating a connection pool
+const pool = mysql.createPool({
+	connectionLimit: 10,
+	host: 'localhost',
+	user: 'root',
+	password: 'SQLaccount7!', // your password here
+	database: 'fidodb',
 });
-
-// Define the Authenticator schema
-const authenticatorSchema = new mongoose.Schema({
-	credentialID: { type: Buffer, required: false, index: true },
-	credentialPublicKey: { type: Buffer, required: false },
-	counter: { type: Number, required: false },
-	credentialDeviceType: {
-		type: String,
-		enum: ['singleDevice', 'multiDevice'],
-		required: false,
-	},
-	credentialBackedUp: { type: Boolean, required: false },
-	transports: [{ type: String, enum: ['usb', 'ble', 'nfc', 'internal'] }],
-});
-
-// Define the main User schema
-const userSchema = new mongoose.Schema({
-	username: String,
-	userId: String,
-	challenge: String,
-	credential: credentialSchema,
-	authenticators: [authenticatorSchema],
-});
-
-let User;
-if (!mongoose.models.User) {
-	console.log('Registration - Inside no schema');
-	User = mongoose.model('User', userSchema);
-} else {
-	console.log('Registration - Inside present schema');
-	User = mongoose.model('User');
-}
 
 exports.generateRegistrationOptions = async (req, res, next) => {
 	const { username } = req.body;
+
+	pool.query = util.promisify(pool.query);
+
 	try {
-		// Check if the user already exists
-		let user = await User.findOne({ username });
-		let userAuthenticators = [];
+		let results = await pool.query('SELECT * FROM Users WHERE Username = ?', [
+			username,
+		]);
+
 		let userId;
-		if (!user) {
+		if (results.length === 0) {
 			userId = crypto
 				.createHash('sha256')
 				.update(username)
 				.digest('hex')
 				.toString();
-			user = new User({ username, userId });
-			await user.save();
+			await pool.query(
+				'INSERT INTO Users (Username, UserId, Challenge) VALUES (?, ?, ?)',
+				[username, userId, null]
+			);
+		} else {
+			userId = results[0].UserId;
 		}
-		if (user) {
-			userAuthenticators = user.authenticators;
-			userId = user.userId;
-		}
+
 		const options = await generateRegistrationOptions({
 			rpName: 'FIDO Server',
 			rpID: 'localhost',
-			userID: userId, // use the generated unique ID
+			userID: userId,
 			userName: username,
 			timeout: 60000,
 			attestationType: 'direct',
-			excludeCredentials: userAuthenticators.map((authenticator) => ({
-				id: authenticator.credentialID,
-				type: 'public-key',
-				// Optional
-				// transports: authenticator.transports,
-			})),
+			excludeCredentials: [], // Assuming no previous authenticators for simplicity
 		});
-		// Save the challenge to the user's record
-		user.challenge = options.challenge;
-		await user.save();
+
+		await pool.query('UPDATE Users SET Challenge = ? WHERE UserId = ?', [
+			options.challenge,
+			userId,
+		]);
+
 		res.json(options);
-	} catch (error) {
-		console.error(error);
+	} catch (err) {
+		console.error(err);
 		res.status(500).json({ error: 'Internal Server Error' });
 	}
 };
 
 exports.verifyRegistrationData = async (req, res, next) => {
 	try {
-		// Parse clientDataJSON and attestationObject
 		const registrationData = req.body;
-		const { loggedInUser, credential } = req.body;
+		const { loggedInUser, credential } = registrationData;
 
-		//Retrieve the challenge
-		const user = await User.findOne({ userId: loggedInUser });
-		const savedChallenge = user.challenge;
+		const userResults = await pool.query(
+			'SELECT * FROM Users WHERE UserId = ?',
+			[loggedInUser]
+		);
+		const user = userResults[0];
+		const savedChallenge = user.Challenge;
 		const origin = 'http://localhost:4200';
 		const rpID = 'localhost';
-		credential.rawId = credential.rawId;
-		credential.response.clientDataJSON = credential.response.clientDataJSON;
-		credential.response.attestationObject =
-			credential.response.attestationObject;
 
 		const verification = await verifyRegistrationResponse({
 			response: credential,
@@ -131,57 +84,59 @@ exports.verifyRegistrationData = async (req, res, next) => {
 		});
 
 		if (!verification.verified) {
-			throw new Error('Attestation response is not verified!');
+			return res
+				.status(400)
+				.json({ error: 'Attestation response is not verified!' });
 		}
 
-		// Store the new credential data
 		const registrationInfo = verification.registrationInfo;
-		if (!user.credential) {
-			user.credential = {};
-		}
-		// Convert Uint8Array values to Buffer
-		user.credential.attestationObject = Buffer.from(
-			registrationInfo.attestationObject
-		);
-		user.credential.credentialPublicKey = Buffer.from(
-			registrationInfo.credentialPublicKey
-		);
-		user.credential.credentialID = Buffer.from(registrationInfo.credentialID);
-
-		// Save other properties from registrationInfo
-		user.credential.fmt = registrationInfo.fmt;
-		user.credential.counter = registrationInfo.counter;
-		user.credential.aaguid = registrationInfo.aaguid;
-		user.credential.credentialType = registrationInfo.credentialType;
-		user.credential.userVerified = registrationInfo.userVerified;
-		user.credential.credentialDeviceType =
-			registrationInfo.credentialDeviceType;
-		user.credential.credentialBackedUp = registrationInfo.credentialBackedUp;
-		user.credential.origin = registrationInfo.origin;
-		user.credential.rpID = registrationInfo.rpID;
-		user.credential.authenticatorExtensionResults =
-			registrationInfo.authenticatorExtensionResults;
-
-		// Save the updated user document
 		const newAuthenticator = {
-			credentialID: Buffer.from(registrationInfo.credentialID),
-			credentialPublicKey: Buffer.from(registrationInfo.credentialPublicKey),
+			credentialID: registrationInfo.credentialID.toString('base64'),
+			credentialPublicKey:
+				registrationInfo.credentialPublicKey.toString('base64'),
 			counter: registrationInfo.counter,
 			credentialDeviceType: registrationInfo.credentialDeviceType,
 			credentialBackedUp: registrationInfo.credentialBackedUp,
 		};
-		user.authenticators.push(newAuthenticator);
-		await user.save();
+
+		const authenticatorResults = await pool.query(
+			'INSERT INTO Authenticators (UserId, CredentialDeviceType, CredentialBackedUp, credentialID, credentialPublicKey, counter) VALUES (?, ?, ?, ?, ?, ?)',
+			[
+				loggedInUser,
+				newAuthenticator.credentialDeviceType,
+				newAuthenticator.credentialBackedUp,
+				JSON.stringify(newAuthenticator.credentialID),
+				JSON.stringify(newAuthenticator.credentialPublicKey),
+				newAuthenticator.counter
+			]
+		);
+
+		const authenticatorId = authenticatorResults.insertId;
+
+		await pool.query(
+			'INSERT INTO Credentials (AuthenticatorId, Fmt, Counter, Aaguid, CredentialIDBlob, CredentialPublicKeyBlob, CredentialType, AttestationObjectBlob, UserVerified, Origin, RpID, AuthenticatorExtensionResults) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+			[
+				authenticatorId,
+				registrationInfo.fmt,
+				registrationInfo.counter,
+				registrationInfo.aaguid,
+				JSON.stringify(registrationInfo.credentialID),
+				JSON.stringify(registrationInfo.credentialPublicKey),
+				registrationInfo.credentialType,
+				JSON.stringify(registrationInfo.attestationObject),
+				registrationInfo.userVerified,
+				registrationInfo.origin,
+				registrationInfo.rpID,
+				registrationInfo.authenticatorExtensionResults,
+			]
+		);
 
 		res.status(200).send({
 			success: true,
 			message: 'Verification and storage successful!',
 		});
-	} catch (error) {
-		console.error('Verification failed:', error);
-		res.status(500).send({
-			success: false,
-			message: 'Verification failed!',
-		});
+	} catch (err) {
+		console.error(err);
+		return res.status(500).json({ error: 'Internal Server Error' });
 	}
 };

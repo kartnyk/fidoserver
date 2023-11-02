@@ -28,13 +28,14 @@ export class LoginComponent {
     const { challenge, allowCredentials, timeout, rpID, userVerification } =
       response;
     response.challenge = this.base64ToBuffer(response.challenge);
+    // response.allowCredentials = [];
     response.allowCredentials = response.allowCredentials.map((cred: any) => {
       if (typeof cred.id === 'string') {
         cred.id = this.base64ToBuffer(cred.id);
       }
       return cred;
     });
-
+    console.log("response", response)
     navigator.credentials
       .get({ publicKey: response })
       .then((credential: Credential | null) => {
