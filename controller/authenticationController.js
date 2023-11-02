@@ -94,11 +94,11 @@ exports.verifyAuthenticationData = async (req, res, next) => {
 
 		// Verify the attestation response
 		const verification = await verifyAuthenticationResponse({
-			credential,
+			response: credential,
 			expectedChallenge: savedChallenge,
 			expectedOrigin: origin,
 			expectedRPID: rpID,
-			authenticator: matchingAuthenticator,
+			authenticator: matchingAuthenticator[0],
 		});
 
 		if (!verification.verified) {
@@ -109,7 +109,7 @@ exports.verifyAuthenticationData = async (req, res, next) => {
 		const { newCounter } = verification.authenticationInfo;
 
 		await pool.query(
-			'UPDATE Authenticators SET Counter = ? WHERE crdentialID = ?',
+			'UPDATE Authenticators SET Counter = ? WHERE credentialID = ?',
 			[newCounter, base64CredentialID]
 		);
 

@@ -26,6 +26,7 @@ exports.generateRegistrationOptions = async (req, res, next) => {
 		]);
 
 		let userId;
+		let excludeCredentials = [];
 		if (results.length === 0) {
 			userId = crypto
 				.createHash('sha256')
@@ -38,6 +39,14 @@ exports.generateRegistrationOptions = async (req, res, next) => {
 			);
 		} else {
 			userId = results[0].UserId;
+			const existingAuthenticators = await pool.query(
+				'SELECT credentialID FROM Authenticators WHERE UserId = ?',
+				userId
+			);
+			excludeCredentials = existingAuthenticators.map(auth => ({
+				type: 'public-key',
+				id: auth.credentialID, // Make sure to convert Buffer to the right format if needed
+			}));
 		}
 
 		const options = await generateRegistrationOptions({
@@ -47,7 +56,7 @@ exports.generateRegistrationOptions = async (req, res, next) => {
 			userName: username,
 			timeout: 60000,
 			attestationType: 'direct',
-			excludeCredentials: [], // Assuming no previous authenticators for simplicity
+			excludeCredentials: excludeCredentials,
 		});
 
 		await pool.query('UPDATE Users SET Challenge = ? WHERE UserId = ?', [

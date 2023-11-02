@@ -39,6 +39,7 @@ export class LoginComponent {
     navigator.credentials
       .get({ publicKey: response })
       .then((credential: Credential | null) => {
+        console.log("cresenetials", credential)
         if (!credential) {
           console.error('No credentials returned from WebAuthn API');
           window.Error('Error Authenticating, Please Try Again!');
