@@ -91,9 +91,9 @@ exports.verifyRegistrationData = async (req, res, next) => {
 
 		const registrationInfo = verification.registrationInfo;
 		const newAuthenticator = {
-			credentialID: registrationInfo.credentialID.toString('base64'),
+			credentialID: Buffer.from(registrationInfo.credentialID),
 			credentialPublicKey:
-				registrationInfo.credentialPublicKey.toString('base64'),
+				Buffer.from(registrationInfo.credentialPublicKey),
 			counter: registrationInfo.counter,
 			credentialDeviceType: registrationInfo.credentialDeviceType,
 			credentialBackedUp: registrationInfo.credentialBackedUp,
@@ -105,8 +105,8 @@ exports.verifyRegistrationData = async (req, res, next) => {
 				loggedInUser,
 				newAuthenticator.credentialDeviceType,
 				newAuthenticator.credentialBackedUp,
-				JSON.stringify(newAuthenticator.credentialID),
-				JSON.stringify(newAuthenticator.credentialPublicKey),
+				newAuthenticator.credentialID,
+				newAuthenticator.credentialPublicKey,
 				newAuthenticator.counter
 			]
 		);
