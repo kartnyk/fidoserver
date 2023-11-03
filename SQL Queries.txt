@@ -1,0 +1,36 @@
+-- Users Table
+CREATE TABLE Users (
+    Username VARCHAR(255),
+    UserId VARCHAR(255) PRIMARY KEY,
+    Challenge VARCHAR(255)
+);
+
+-- Authenticators Table
+CREATE TABLE Authenticators (
+    AuthenticatorId INT AUTO_INCREMENT PRIMARY KEY,
+    UserId VARCHAR(255),
+    CredentialDeviceType ENUM('singleDevice', 'multiDevice'),
+    CredentialBackedUp BOOLEAN,
+    credentialID BLOB,
+    credentialPublicKey BLOB,
+    counter INT,
+    FOREIGN KEY (UserId) REFERENCES Users(UserId)
+);
+
+-- Credentials Table
+CREATE TABLE Credentials (
+    CredentialID INT AUTO_INCREMENT PRIMARY KEY,
+    AuthenticatorId INT,
+    Fmt VARCHAR(255),
+    Counter INT,
+    Aaguid VARCHAR(255),
+    CredentialIDBlob BLOB,
+    CredentialPublicKeyBlob BLOB,
+    CredentialType VARCHAR(255),
+    AttestationObjectBlob BLOB,
+    UserVerified BOOLEAN,
+    Origin VARCHAR(255),
+    RpID VARCHAR(255),
+    AuthenticatorExtensionResults TEXT,
+    FOREIGN KEY (AuthenticatorId) REFERENCES Authenticators(AuthenticatorId)
+);
