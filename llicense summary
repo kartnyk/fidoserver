@@ -1,0 +1,21 @@
+The license for Yubico's java-webauthn-server is a type of BSD license, which is a permissive free software license. Here's a summary of what this license means:
+
+Permission for Redistribution and Use:
+
+You are allowed to redistribute and use the software in both source (original code) and binary (compiled code) forms, with or without modification.
+Conditions for Redistribution:
+
+If you redistribute the source code, you must keep the copyright notice, the list of conditions, and the disclaimer in the redistributed code.
+If you redistribute the software in binary form, you must reproduce the copyright notice, the list of conditions, and the disclaimer in the documentation and/or other materials provided with the distribution.
+Disclaimer of Warranty:
+
+The software is provided "as is", without any kind of warranty. This means that the copyright holders and contributors make no guarantees about the software's suitability for any purpose.
+It explicitly states that there are no implied warranties of merchantability or fitness for a particular purpose.
+Limitation of Liability:
+
+The copyright holders and contributors are not liable for any damages that may arise from the use of the software. This includes direct, indirect, incidental, special, exemplary, or consequential damages.
+This limitation applies regardless of whether the damages arise from contract, strict liability, or tort (including negligence or otherwise) and even if they are advised of the possibility of such damage.
+Restriction on Endorsement:
+
+For the code originally from Google Inc., you cannot use the names of Google Inc. or its contributors to endorse or promote products derived from this software without specific prior written permission.
+In summary, this license allows for broad use and redistribution of the software, with minimal restrictions, but it does not provide any warranty and limits the liability of the copyright holders and contributors. Additionally, it restricts the use of the names of Google Inc. and its contributors for endorsement purposes without prior permission.
