@@ -113,7 +113,7 @@ export class LoginComponent {
     );
   }
 
-  private startWebAuthnRegistration(response: any) {
+  private async startWebAuthnRegistration(response: any) {
     const loggedInUser = response.user.id;
     response.challenge = this.base64UrlToUint8Array(response.challenge);
     response.user.id = this.base64UrlToUint8Array(response.user.id);
@@ -124,6 +124,12 @@ export class LoginComponent {
       }
     }
 
+    await console.log("tesing verify registartion {}", response)
+    if (response.extensions && response.extensions.appidExclude === null) {
+      delete response.extensions.appidExclude;
+    }
+    await console.log("tesing verify registartion after deleting", response)
+    // response.extensions.appidExclude = "localhost.com"
     navigator.credentials
       .create({ publicKey: response })
       .then((credential: Credential | null) => {
