@@ -1,6 +1,5 @@
 import { Component } from '@angular/core';
 import { FidoService } from '../fido.service';
-import * as webauthn from '@github/webauthn-json';
 
 @Component({
   selector: 'app-login',
@@ -9,17 +8,34 @@ import * as webauthn from '@github/webauthn-json';
 })
 export class LoginComponent {
   username: string = '';
+  isLoading: boolean = false; // Added to track when loading starts and ends.
 
   constructor(private fidoService: FidoService) {}
 
   onLogin() {
+    this.isLoading = true; // Start loading
     this.fidoService.generateAuthenticationOptions(this.username).subscribe(
       (response) => {
+        // Handle the response and start WebAuthn Authentication
         this.startWebAuthnAuthentication(response);
       },
       (error) => {
+        this.isLoading = false; // Stop loading on error
         console.error('Error:', error);
-        window.Error(error);
+      }
+    );
+  }
+
+  onRegister() {
+    this.isLoading = true; // Start loading
+    this.fidoService.generateRegistrationOptions(this.username).subscribe(
+      (response) => {
+        // Handle the response and start WebAuthn Registration
+        this.startWebAuthnRegistration(response);
+      },
+      (error) => {
+        this.isLoading = false; // Stop loading on error
+        console.error('Error:', error);
       }
     );
   }
@@ -81,6 +97,7 @@ export class LoginComponent {
           .authenticacteWithWebAuthn(authenticationData)
           .subscribe(
             (data) => {
+              this.isLoading = false;
               if (data.success) {
                 window.alert('Authentication Success');
               } else {
@@ -97,18 +114,6 @@ export class LoginComponent {
         console.error('WebAuthn Authentication error:', error);
         window.Error(error);
       });
-  }
-
-  onRegister() {
-    this.fidoService.generateRegistrationOptions(this.username).subscribe(
-      (response) => {
-        this.startWebAuthnRegistration(response);
-      },
-      (error) => {
-        console.error('Error:', error);
-        window.Error(error);
-      }
-    );
   }
 
   private startWebAuthnRegistration(response: any) {
@@ -154,6 +159,7 @@ export class LoginComponent {
         };
         this.fidoService.registerWithWebAuthn(registrationData).subscribe(
           (data) => {
+            this.isLoading = false;
             if (data.success) {
               window.alert('Registration Success');
             } else {

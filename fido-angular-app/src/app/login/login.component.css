@@ -1,39 +1,93 @@
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(to right, #e6f1f9, #ffffff);
+    font-family: 'Open Sans', sans-serif;
+}
+
 .login-container {
     width: 350px;
-    margin: 0 auto;
+    margin: 100px auto;
     padding: 50px;
-    border: 1px solid #130101;
-    border-radius: 4px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    background-color: rgb(223, 232, 234);
+    border: 1px solid #d3d3d3;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    background-color: #ffffff;
+    position: relative;
 }
 
 h2 {
     text-align: center;
-    color: #074180;
+    color: #333333;
+    margin-bottom: 30px;
+    font-size: 24px;
 }
 
 input {
-    width: 80%;
-    padding: 10px;
-    margin-left: 20px;
-    margin-bottom: 15px;
-    border: 1px solid #130101;
-    border-radius: 4px;
+    display: block;
+    width: calc(100% - 40px);
+    padding: 12px;
+    margin: 10px auto;
+    border: 1px solid #d3d3d3;
+    border-radius: 5px;
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+}
+
+input:focus {
+    border-color: #074180;
+    box-shadow: 0 0 0 2px rgba(7, 65, 128, 0.2);
+    outline: none;
 }
 
 button {
-    width: 86.5%;
-    padding: 10px;
-    margin-left: 20px;
+    display: block;
+    width: calc(100% - 40px);
+    padding: 12px;
+    margin: 10px auto;
     background-color: #074180;
     color: #fff;
     border: none;
-    border-radius: 4px;
+    border-radius: 5px;
     cursor: pointer;
-    margin-top: 10px;
+    transition: background-color 0.3s ease;
+    position: relative; /* Set the button to a relative position */
+    overflow: hidden; /* Prevents the spinner from making the button larger */
+}
+
+button:disabled {
+    cursor: default;
+    background-color: #aaa;
 }
 
 button:hover {
     background-color: #0056b3;
+}
+
+.loader {
+    border: 2px solid #f3f3f3; /* Light grey */
+    border-top: 2px solid #3498db; /* Blue */
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    animation: spin 1s linear infinite;
+    position: absolute; /* Absolute position for the spinner */
+    top: 50%;
+    left: 50%;
+    margin-top: -9px; /* Offset by half the height of the spinner */
+    margin-left: -9px; /* Offset by half the width of the spinner */
+}
+
+@keyframes spin {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+
+@media (max-width: 400px) {
+    .login-container {
+        width: 90%;
+        margin-top: 50px;
+    }
 }

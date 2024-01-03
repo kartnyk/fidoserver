@@ -1,6 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Page Title</title>
+    <!-- Google Font Link -->
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <!-- External CSS Link -->
+    <link rel="stylesheet" href="./login.component.css">
+</head>
+<body>
+
 <div class="login-container">
     <h2>FIDO Authentication</h2>
     <input [(ngModel)]="username" placeholder="Enter username">
-    <button (click)="onRegister()">Register</button>
-    <button (click)="onLogin()">Login</button>
+    <button (click)="onRegister()" [disabled]="isLoading">
+        Register
+        <span *ngIf="isLoading" class="loader"></span>
+    </button>
+    <button (click)="onLogin()" [disabled]="isLoading">
+        Login
+        <span *ngIf="isLoading" class="loader"></span>
+    </button>
+    
 </div>
+
+</body>
+</html>
