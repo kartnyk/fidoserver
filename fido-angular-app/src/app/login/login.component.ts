@@ -25,16 +25,26 @@ export class LoginComponent {
   }
 
   private startWebAuthnAuthentication(response: any) {
+    response = response.publicKeyCredentialRequestOptions
     const { challenge, allowCredentials, timeout, rpID, userVerification } =
       response;
+    console.log("response.challenge", challenge)
     response.challenge = this.base64ToBuffer(response.challenge);
     // response.allowCredentials = [];
     response.allowCredentials = response.allowCredentials.map((cred: any) => {
       if (typeof cred.id === 'string') {
         cred.id = this.base64ToBuffer(cred.id);
       }
+      delete cred.transports;
       return cred;
     });
+    // Added this delete as for Java based libraray without the deleted extensions would cause 
+    // the operation to timeout or not allowed exception, need to figure out what these extensions are
+    if (response.extensions && response.extensions.appid === null 
+      && response.extensions.largeBlob === null) {
+      delete response.extensions.appid;
+      delete response.extensions.largeBlob;
+    }
     console.log("response", response)
     navigator.credentials
       .get({ publicKey: response })
@@ -46,6 +56,7 @@ export class LoginComponent {
           return;
         }
         const loggedInUser = this.username;
+        console.log("loggedInUser during Authentication", loggedInUser)
         const publicKeyCredential = credential as PublicKeyCredential;
         const assertionResponse =
           publicKeyCredential.response as AuthenticatorAssertionResponse;
@@ -115,21 +126,43 @@ export class LoginComponent {
 
   private async startWebAuthnRegistration(response: any) {
     const loggedInUser = response.user.id;
+    console.log("loggedInUser during Registration", loggedInUser)
+
     response.challenge = this.base64UrlToUint8Array(response.challenge);
     response.user.id = this.base64UrlToUint8Array(response.user.id);
 
+    // if (response.excludeCredentials) {
+    //   for (let cred of response.excludeCredentials) {
+    //     cred.id = this.base64UrlToUint8Array(cred.id);
+    //   }
+    //   delete cred.transports;
+    // }
+
     if (response.excludeCredentials) {
-      for (let cred of response.excludeCredentials) {
-        cred.id = this.base64UrlToUint8Array(cred.id);
-      }
+      response.excludeCredentials = response.excludeCredentials.map((cred: any) => {
+        if (typeof cred.id === 'string') {
+          cred.id = this.base64ToBuffer(cred.id);
+        }
+        delete cred.transports;
+        return cred;
+      });
     }
 
-    await console.log("tesing verify registartion {}", response)
-    if (response.extensions && response.extensions.appidExclude === null) {
+    // response.allowCredentials = response.allowCredentials.map((cred: any) => {
+    //   if (typeof cred.id === 'string') {
+    //     cred.id = this.base64ToBuffer(cred.id);
+    //   }
+    //   delete cred.transports;
+    //   return cred;
+    // });
+    // Added this delete as for Java based libraray without the deleted extensions would cause 
+    // the operation to timeout or not allowed exception, need to figure out what these extensions are
+    if (response.extensions && response.extensions.appidExclude === null 
+      && response.extensions.largeBlob === null) {
       delete response.extensions.appidExclude;
+      delete response.extensions.largeBlob;
     }
-    await console.log("tesing verify registartion after deleting", response)
-    // response.extensions.appidExclude = "localhost.com"
+    
     navigator.credentials
       .create({ publicKey: response })
       .then((credential: Credential | null) => {
@@ -147,6 +180,7 @@ export class LoginComponent {
           credential: {
             id: publicKeyCredential.id,
             type: publicKeyCredential.type,
+            clientExtensionResults: publicKeyCredential.getClientExtensionResults(),
             rawId: this.base64urlEncode(
               new Uint8Array(publicKeyCredential.rawId)
             ),
@@ -209,6 +243,7 @@ export class LoginComponent {
   }
 
   private base64UrlToBase64(base64Url: string): string {
+    console.log("base64Url string", base64Url)
     return base64Url.replace(/-/g, '+').replace(/_/g, '/');
   }
 }

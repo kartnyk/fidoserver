@@ -7,7 +7,7 @@ import { Observable } from 'rxjs';
 })
 export class FidoService {
   // private apiUrl = 'http://localhost:3000/fido'; //For WSL
-  private apiUrl = 'http://192.168.0.100:8080/fido';
+  private apiUrl = 'http://192.168.29.25:8080/fido';
 
   constructor(private http: HttpClient) {}
 
@@ -20,7 +20,7 @@ export class FidoService {
 
   registerWithWebAuthn(publicKeyCredential: any): Observable<any> {
     return this.http.post<any>(
-      `${this.apiUrl}/register/verifyRegistrationData`,
+      `${this.apiUrl}/register/verifyRegistrationResponse`,
       publicKeyCredential
     );
   }
