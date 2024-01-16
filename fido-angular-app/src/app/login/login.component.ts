@@ -87,6 +87,7 @@ export class LoginComponent {
                   )
                 : null,
             },
+            clientExtensionResults: publicKeyCredential.getClientExtensionResults()
           },
         };
 
@@ -175,25 +176,23 @@ export class LoginComponent {
         const attestationResponse =
           publicKeyCredential.response as AuthenticatorAttestationResponse;
 
-        const registrationData = {
-          loggedInUser: loggedInUser,
-          credential: {
-            id: publicKeyCredential.id,
-            type: publicKeyCredential.type,
-            clientExtensionResults: publicKeyCredential.getClientExtensionResults(),
-            rawId: this.base64urlEncode(
-              new Uint8Array(publicKeyCredential.rawId)
-            ),
-            response: {
-              clientDataJSON: this.base64urlEncode(
-                new Uint8Array(attestationResponse.clientDataJSON)
-              ),
-              attestationObject: this.base64urlEncode(
-                new Uint8Array(attestationResponse.attestationObject)
-              ),
+          const registrationData = {
+            loggedInUser: loggedInUser,
+            credential: {
+              id: publicKeyCredential.id, // keep ID as is
+              type: publicKeyCredential.type,
+              clientExtensionResults: publicKeyCredential.getClientExtensionResults(),
+              rawId: this.base64urlEncode(new Uint8Array(publicKeyCredential.rawId)), // send rawId as Uint8Array
+              response: {
+                clientDataJSON: this.base64urlEncode(
+                  new Uint8Array(attestationResponse.clientDataJSON)
+                ),
+                attestationObject: this.base64urlEncode(
+                  new Uint8Array(attestationResponse.attestationObject)
+                ),
+              },
             },
-          },
-        };
+          };
         this.fidoService.registerWithWebAuthn(registrationData).subscribe(
           (data) => {
             if (data.success) {
