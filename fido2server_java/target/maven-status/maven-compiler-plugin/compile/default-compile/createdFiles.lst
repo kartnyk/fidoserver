@@ -1,0 +1,10 @@
+com\example\fido2server\controller\Fido2AuthenticationController.class
+com\example\fido2server\dto\RegistrationResponseData.class
+com\example\fido2server\dto\AuthenticationResponseData.class
+com\example\fido2server\service\InMemoryCredentialRepository.class
+com\example\fido2server\App.class
+com\example\fido2server\service\Fido2RegistrationService.class
+com\example\fido2server\config\CORSConfig.class
+com\example\fido2server\service\FidoDatabaseCredentialRepository.class
+com\example\fido2server\service\Fido2AuthenticationService.class
+com\example\fido2server\controller\Fido2RegistrationController.class
