@@ -19,3 +19,19 @@ Restriction on Endorsement:
 
 For the code originally from Google Inc., you cannot use the names of Google Inc. or its contributors to endorse or promote products derived from this software without specific prior written permission.
 In summary, this license allows for broad use and redistribution of the software, with minimal restrictions, but it does not provide any warranty and limits the liability of the copyright holders and contributors. Additionally, it restricts the use of the names of Google Inc. and its contributors for endorsement purposes without prior permission.
+
+
+**************************
+
+Implementing FIDO2 with AWS Amplify and Cognito
+Custom Authentication Flow: Utilize AWS Amplify to set up your initial authentication framework with Amazon Cognito. You would typically start with a standard sign-up and sign-in flow using Amplify Auth.
+
+Lambda Triggers for Custom Logic: Leverage AWS Lambda functions, which can be triggered by Cognito authentication events, to introduce FIDO2 authentication steps. You'd write custom Lambda functions to handle the FIDO2 registration (during sign-up) and authentication (during sign-in) processes.
+
+FIDO2 Library Integration: Inside your custom Lambda functions, utilize a FIDO2 server library compatible with the programming language you're using for Lambda (e.g., a Node.js or Python FIDO2 library). This library will handle the generation and verification of FIDO2 challenges and responses.
+
+Client-Side FIDO2 Handling: On the front end, use the WebAuthn API in your Amplify project to initiate FIDO2 registration and authentication processes. This involves creating new credentials for new users and asserting credentials for returning users.
+
+Store and Verify Credentials: Use the custom Lambda functions to store FIDO2 credential data (e.g., public keys, sign counters) securely in a database, and to verify the credential assertion during the authentication process. This might involve additional AWS services, such as Amazon DynamoDB, for storing the FIDO2 credential data.
+
+Integrate with Amplify Authentication Flow: Ensure the FIDO2 authentication process is seamlessly integrated into your application's overall authentication flow. This might involve customizing the UI components provided by AWS Amplify to include FIDO2 authentication options.
