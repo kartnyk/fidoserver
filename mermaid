@@ -1,0 +1,23 @@
+sequenceDiagram
+    participant User as User
+    participant Browser as Browser (www.example.com)
+    participant WebAuthnAPI as WebAuthn API
+    participant Authenticator as Authenticator
+    box Transparent AWS
+    participant Server as RP FIDO2 Server (www.example.com)
+    participant Cognito as Amazon Cognito
+    end
+
+    User->>+Browser: Navigates to www.example.com & initiates account creation
+    Browser->>+Server: Requests credential options object
+    Server->>-Browser: Sends credential options(Challenge and other options) object
+    Browser->>-WebAuthnAPI: Calls navigator.credentials.create with options
+    WebAuthnAPI->>Authenticator: User prompted to use security key/biometric
+    Authenticator->>WebAuthnAPI: Generates new credentials & response object
+    WebAuthnAPI->>Browser: Returns response object
+    Browser->>+Server: Sends credential response object
+    Server->>Server: Parses & validates response, extracts public key
+    Server->>+Cognito: Registers user with profile attributes & publicKeyCred
+    Cognito->>-Server: User created & publicKeyCred stored
+    Server->>Browser: Confirms registration success
+    Browser->>User: Displays registration success message
