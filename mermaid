@@ -21,3 +21,30 @@ sequenceDiagram
     Cognito->>-Server: User created & publicKeyCred stored
     Server->>Browser: Confirms registration success
     Browser->>User: Displays registration success message
+
+
+sequenceDiagram
+    participant User as User
+    participant Browser as Browser
+    participant Cognito as Amazon Cognito
+    participant DefineAuth as "Define Auth Challenge Lambda"
+    participant CreateAuth as "Create Auth Challenge Lambda"
+    participant Authenticator as Authenticator
+    participant VerifyAuth as "Verify Auth Challenge Lambda"
+
+    User->>+Browser: Provides username and initiates sign-in
+    Browser->>+Cognito: Calls InitiateAuth with username (CUSTOM_AUTH)
+    Cognito->>+DefineAuth: Passes control
+    DefineAuth->>-Cognito: Determines and returns CUSTOM_CHALLENGE
+    Cognito->>+CreateAuth: Passes control for custom challenge creation
+    CreateAuth->>-Cognito: Returns custom challenge to client
+    Browser->>+Authenticator: Prompts user to activate authenticator
+    Authenticator->>-Browser: Verifies and returns credentials response
+    Browser->>+Cognito: Calls RespondToAuthChallenge with credentials response
+    Cognito->>+VerifyAuth: Validates credentials response
+    VerifyAuth->>-Cognito: Validates signature and responds with success
+    Cognito->>+DefineAuth: Determines next step in Define Auth Challenge
+    DefineAuth->>Cognito: Indicates authentication success
+    Cognito->>-Browser: Authentication succeeds, returns tokens (ID, Access, Refresh)
+    Browser->>User: Displays authentication success & provides tokens
+
