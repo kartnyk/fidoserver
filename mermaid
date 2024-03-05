@@ -60,3 +60,35 @@ sequenceDiagram
     DSAuth->>Browser: Indicates successful registration
     Browser->>User: Displays registration success message
     Note over DSAuth: Public key & user details stored here
+
+
+sequenceDiagram
+    participant User as User
+    participant Browser as Browser
+    participant DSAuth as DSAuth
+    participant FIDO2Server as FIDO2 Server (API Gateway)
+    participant LambdaRecovery as Lambda (Account Recovery)
+    participant EmailService as Email Service
+
+    User->>+Browser: Initiates account recovery
+    Browser->>+DSAuth: Requests account recovery
+    DSAuth->>+FIDO2Server: Forwards recovery request
+    FIDO2Server->>+LambdaRecovery: Invokes Lambda for recovery
+    LambdaRecovery->>+EmailService: Sends verification code/email
+    EmailService->>-User: User receives verification code/email
+    User->>+Browser: Submits verification code
+    Browser->>+FIDO2Server: Submits verification code for validation
+    FIDO2Server->>+LambdaRecovery: Validates verification code
+    LambdaRecovery->>-FIDO2Server: Verification successful
+    FIDO2Server->>DSAuth: Informs recovery verification success
+    DSAuth->>Browser: Prompts user to set new authentication method
+    Browser->>WebAuthnAPI: Invokes navigator.credentials.create for new key pair
+    WebAuthnAPI->>+Authenticator: User completes new FIDO2 registration action
+    Authenticator->>WebAuthnAPI: Generates new credentials (public/private key pair)
+    WebAuthnAPI->>Browser: Returns new credentials response
+    Browser->>DSAuth: Submits new credentials response
+    DSAuth->>DSAuth: Updates user profile with new public key
+    DSAuth->>-Browser: Confirms account recovery success
+    Browser->>-User: Displays account recovery success message
+    Note over DSAuth: Public key & user details updated here
+
