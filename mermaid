@@ -1,50 +1,34 @@
 sequenceDiagram
     participant User as User
-    participant Browser as Browser (www.example.com)
-    participant WebAuthnAPI as WebAuthn API
-    participant Authenticator as Authenticator
-    box Transparent AWS
-    participant Server as RP FIDO2 Server (www.example.com)
-    participant Cognito as Amazon Cognito
-    end
-
-    User->>+Browser: Navigates to www.example.com & initiates account creation
-    Browser->>+Server: Requests credential options object
-    Server->>-Browser: Sends credential options(Challenge and other options) object
-    Browser->>-WebAuthnAPI: Calls navigator.credentials.create with options
-    WebAuthnAPI->>Authenticator: User prompted to use security key/biometric
-    Authenticator->>WebAuthnAPI: Generates new credentials & response object
-    WebAuthnAPI->>Browser: Returns response object
-    Browser->>+Server: Sends credential response object
-    Server->>Server: Parses & validates response, extracts public key
-    Server->>+Cognito: Registers user with profile attributes & publicKeyCred
-    Cognito->>-Server: User created & publicKeyCred stored
-    Server->>Browser: Confirms registration success
-    Browser->>User: Displays registration success message
-
-
-sequenceDiagram
-    participant User as User
     participant Browser as Browser
-    participant Cognito as Amazon Cognito
-    participant DefineAuth as "Define Auth Challenge Lambda"
-    participant CreateAuth as "Create Auth Challenge Lambda"
+    participant WebAuthnAPI as WebAuthn API
+    participant DSAuth as DSAuth
+    participant FIDO2Server as FIDO2 Server (API Gateway)
+    participant LambdaAuth as Lambda (Authentication)
+    participant LambdaVerify as Lambda (Verify Auth Challenge)
     participant Authenticator as Authenticator
-    participant VerifyAuth as "Verify Auth Challenge Lambda"
 
-    User->>+Browser: Provides username and initiates sign-in
-    Browser->>+Cognito: Calls InitiateAuth with username (CUSTOM_AUTH)
-    Cognito->>+DefineAuth: Passes control
-    DefineAuth->>-Cognito: Determines and returns CUSTOM_CHALLENGE
-    Cognito->>+CreateAuth: Passes control for custom challenge creation
-    CreateAuth->>-Cognito: Returns custom challenge to client
-    Browser->>+Authenticator: Prompts user to activate authenticator
-    Authenticator->>-Browser: Verifies and returns credentials response
-    Browser->>+Cognito: Calls RespondToAuthChallenge with credentials response
-    Cognito->>+VerifyAuth: Validates credentials response
-    VerifyAuth->>-Cognito: Validates signature and responds with success
-    Cognito->>+DefineAuth: Determines next step in Define Auth Challenge
-    DefineAuth->>Cognito: Indicates authentication success
-    Cognito->>-Browser: Authentication succeeds, returns tokens (ID, Access, Refresh)
-    Browser->>User: Displays authentication success & provides tokens
-
+    User->>+Browser: Initiates sign-in
+    Browser->>+DSAuth: Sends authentication request
+    DSAuth->>DSAuth: Checks user status & authentication mechanism
+    alt If FIDO2 Authentication Required
+        DSAuth->>FIDO2Server: Routes FIDO2 auth request
+        FIDO2Server->>+LambdaAuth: Invokes custom Lambda for auth
+        LambdaAuth->>-FIDO2Server: Generates and returns FIDO2 challenge
+        FIDO2Server->>DSAuth: Sends FIDO2 challenge
+        DSAuth->>Browser: Sends FIDO2 challenge to Browser
+        Browser->>WebAuthnAPI: Invokes navigator.credentials.get with challenge
+        WebAuthnAPI->>+Authenticator: Prompts user for FIDO2 action
+        Authenticator->>-WebAuthnAPI: Generates credentials response (includes signature)
+        WebAuthnAPI->>Browser: Returns credentials response
+        Browser->>DSAuth: Submits credentials response
+        DSAuth->>FIDO2Server: Submits credentials response
+        FIDO2Server->>+LambdaVerify: Validates response using public key
+        LambdaVerify->>-FIDO2Server: Confirms authentication success
+        FIDO2Server->>DSAuth: Sends validation result with Public key
+        DSAuth->>DSAuth: Stores public key
+        DSAuth->>DSAuth: Proceeds with alternative authentication
+        DSAuth->>Browser: Indicates successful FIDO2 auth
+    end
+    Browser->>User: Displays authentication success message
+    Note over DSAuth: Public key & user details managed here
