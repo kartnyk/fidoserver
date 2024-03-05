@@ -32,3 +32,31 @@ sequenceDiagram
     end
     Browser->>User: Displays authentication success message
     Note over DSAuth: Public key & user details managed here
+
+
+sequenceDiagram
+    participant User as User
+    participant Browser as Browser
+    participant WebAuthnAPI as WebAuthn API
+    participant DSAuth as DSAuth
+    participant FIDO2Server as FIDO2 Server (API Gateway)
+    participant LambdaReg as Lambda (Registration)
+    participant Authenticator as Authenticator
+    
+    User->>+Browser: Initiates registration
+    Browser->>+DSAuth: Sends registration request
+    DSAuth->>FIDO2Server: Routes registration request
+    FIDO2Server->>+LambdaReg: Invokes custom Lambda for registration
+    LambdaReg->>Browser: Requests user to complete FIDO2 registration
+    Browser->>WebAuthnAPI: Invokes navigator.credentials.create for registration
+    WebAuthnAPI->>+Authenticator: User completes FIDO2 registration action
+    Authenticator->>WebAuthnAPI: Generates new credentials (public/private key pair)
+    WebAuthnAPI->>Browser: Returns new credentials response
+    Browser->>FIDO2Server: Submits new credentials response
+    FIDO2Server->>+LambdaReg: Processes new credentials, extracts public key
+    LambdaReg->>-FIDO2Server: Registration success
+    FIDO2Server->>DSAuth: Confirms user registration with public key
+    DSAuth->>DSAuth: Stores user and public key details
+    DSAuth->>Browser: Indicates successful registration
+    Browser->>User: Displays registration success message
+    Note over DSAuth: Public key & user details stored here
