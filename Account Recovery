@@ -1,0 +1,30 @@
+Guide to FIDO2 Account Recovery Best Practices
+Introduction
+As we move towards stronger security standards, driven by regulations and technological advancements, the ability to recover accounts securely in the event of losing FIDO2 authenticators is essential. An effective recovery process strikes a balance between high security and user accessibility. This guide introduces a comprehensive approach for service providers on managing account recovery, including when users have set up multiple authentication methods.
+
+Account Recovery Strategies
+Strategy 1: Employ Multiple Authenticators
+Encouraging users to use more than one authenticator reduces the hassle associated with account recovery. By having an alternative method ready, such as a mobile device or a security key, the impact of losing one authenticator is minimized. This approach offers convenience without sacrificing security, ensuring users have continuous access to their accounts.
+
+Strategy 2: Re-verify Identity
+If no backup authenticator is available, the service provider should re-verify the user's identity with the same level of scrutiny as the initial verification process. This may involve checking documents or using digital verification methods to confirm the user's identity securely before restoring access to their account.
+
+Strategy 3: Recovery Using Legacy Authentication Mechanisms
+In situations where users have both FIDO credentials and traditional authentication methods (such as passwords, OTPs, or email verification), the system can fallback to these legacy mechanisms for recovery purposes. This option is particularly useful when the user needs to recover their FIDO credential but still has access to their password or can complete multi-factor authentication (MFA). By leveraging existing authentication methods, users can securely regain access to their account and set up a new FIDO authenticator.
+
+Implementing the Strategies
+Balancing Security and Simplicity
+While introducing multiple authentication methods, maintaining a robust security posture is crucial. The addition of alternative authenticators should not compromise the system's overall security. Simplifying the registration and recovery processes encourages user participation and reduces support costs.
+
+Policy Development
+Service providers must tailor their recovery policies to their specific needs, considering factors like user convenience, security requirements, and the types of supported authenticators. These policies should guide users through the recovery process clearly and securely.
+
+Technical Considerations for Recovery
+When integrating new authenticators or using legacy authentication methods for recovery, ensuring a secure process is essential to prevent unauthorized access. Whether through direct device connections, secure digital codes, or traditional password and MFA methods, the recovery process must safeguard against potential security threats.
+
+Conclusion
+Providing multiple authentication options, including the option for legacy authentication mechanisms for recovery, offers a balanced approach to security and accessibility. This multifaceted strategy ensures users can recover their accounts with minimal disruption while maintaining high security standards. Service providers should implement flexible, user-friendly recovery processes that cater to various user needs and security policies.
+
+By adopting these strategies, service providers can enhance the user experience, encourage the adoption of FIDO authentication, and maintain a secure and accessible digital environment.
+
+
