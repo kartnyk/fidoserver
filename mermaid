@@ -92,3 +92,56 @@ sequenceDiagram
     Browser->>-User: Displays account recovery success message
     Note over DSAuth: Public key & user details updated here
 
+Authentication Sequence:
+User Initiates Sign-In: The user starts the sign-in process in their browser.
+Browser Requests Authentication: The browser sends an authentication request to DSAuth.
+DSAuth Checks User Status: DSAuth checks the user's status and determines the required authentication mechanism.
+DSAuth Routes FIDO2 Auth Request: If FIDO2 authentication is required, DSAuth sends the request to the FIDO2 Server.
+FIDO2 Server Invokes Lambda for Auth: The FIDO2 Server calls a Lambda function to generate a FIDO2 challenge.
+Lambda Returns FIDO2 Challenge: The Lambda function processes and sends back the challenge.
+Browser Receives FIDO2 Challenge: DSAuth forwards the FIDO2 challenge to the browser.
+Browser Invokes WebAuthn API: The browser calls the WebAuthn API, prompting the user for FIDO2 action.
+Authenticator Generates Response: The authenticator device prompts user action and creates a credentials response.
+Credentials Response Sent to DSAuth: The browser sends the credentials response back to DSAuth.
+DSAuth Submits Response to FIDO2 Server: DSAuth forwards this response to the FIDO2 Server.
+Lambda Verifies the Response: A second Lambda function validates the credentials response using the user's public key.
+Authentication Success Confirmed: Upon successful validation, the FIDO2 Server confirms the authentication success.
+DSAuth Proceeds with Post-Auth Actions: DSAuth may proceed with additional authentication if necessary.
+DSAuth Indicates Success to Browser: DSAuth sends a success message to the browser.
+Browser Displays Success Message to User: The user sees an authentication success message in their browser.
+Public Key & User Details Managed by DSAuth: DSAuth manages public keys and user details securely.
+
+Registration Sequence:
+The user initiates the registration process via their browser.
+The browser forwards the registration request to DSAuth.
+DSAuth sends the registration request to the FIDO2 Server.
+The FIDO2 Server invokes a Lambda function specifically for registration.
+The Lambda function prompts the user, via the browser, to complete their FIDO2 registration.
+The browser uses the WebAuthn API to start the registration, prompting the user for an action.
+The user performs the required action on their authenticator device.
+The authenticator generates a new public/private key pair and sends it back to the browser.
+The browser sends the new credentials to the FIDO2 Server.
+The Lambda function processes these credentials, extracting the public key.
+Upon successful registration, the FIDO2 Server confirms this to DSAuth.
+DSAuth stores the user's public key details.
+DSAuth signals a successful registration back to the browser.
+The browser then displays a success message to the user.
+Throughout this process, DSAuth is responsible for storing and managing public keys and user details securely.
+
+Recovery Sequence:
+The user starts the account recovery process in their browser.
+The browser sends a recovery request to DSAuth.
+DSAuth passes this request to the FIDO2 Server.
+The FIDO2 Server triggers a Lambda function for account recovery.
+The Lambda function coordinates with an Email Service to send a verification code to the user.
+The user receives this verification code via email and submits it back through the browser.
+The FIDO2 Server validates the submitted verification code with the help of the Lambda function.
+Upon successful verification, DSAuth is notified.
+DSAuth prompts the user, through the browser, to set up a new authentication method.
+The browser invokes the WebAuthn API to create a new key pair.
+The user completes the FIDO2 registration process, generating a new public/private key pair with their authenticator device.
+The browser receives the new credentials response and sends it to DSAuth.
+DSAuth updates the user profile with the new public key.
+DSAuth confirms the success of the account recovery process to the browser.
+Finally, the browser displays a message confirming the successful account recovery to the user.
+Throughout this process, DSAuth updates and manages the public key and user details.
