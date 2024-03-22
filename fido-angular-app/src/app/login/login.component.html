@@ -11,19 +11,21 @@
 </head>
 <body>
 
-<div class="login-container">
-    <h2>FIDO Authentication</h2>
-    <input [(ngModel)]="username" placeholder="Enter username">
-    <button (click)="onRegister()" [disabled]="isLoading">
-        Register
-        <span *ngIf="isLoading" class="loader"></span>
-    </button>
-    <button (click)="onLogin()" [disabled]="isLoading">
-        Login
-        <span *ngIf="isLoading" class="loader"></span>
-    </button>
-    
-</div>
-
+    <div class="login-container">
+        <h2>FIDO Authentication</h2>
+        <input [(ngModel)]="username" placeholder="Enter username">
+        <!-- Register button always visible -->
+        <button (click)="onRegister()" [disabled]="isLoading">Register
+            <span *ngIf="isLoading" class="loader"></span>
+        </button>
+        <!-- Conditional login button for WebAuthn support -->
+        <button *ngIf="webAuthnSupported" (click)="onLogin()" [disabled]="isLoading">Login with Passkey
+            <span *ngIf="isLoading" class="loader"></span>
+        </button>
+        <!-- Fallback login button -->
+        <button *ngIf="!webAuthnSupported" (click)="onLogin()" [disabled]="isLoading">Login
+            <span *ngIf="isLoading" class="loader"></span>
+        </button>
+    </div>    
 </body>
 </html>

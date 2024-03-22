@@ -9,21 +9,19 @@ import { FidoService } from '../fido.service';
 export class LoginComponent {
   username: string = '';
   isLoading: boolean = false; // Added to track when loading starts and ends.
+  webAuthnSupported: boolean = false;
 
   constructor(private fidoService: FidoService) {}
 
-  onLogin() {
-    this.isLoading = true; // Start loading
-    this.fidoService.generateAuthenticationOptions(this.username).subscribe(
-      (response) => {
-        // Handle the response and start WebAuthn Authentication
-        this.startWebAuthnAuthentication(response);
-      },
-      (error) => {
-        this.isLoading = false; // Stop loading on error
-        console.error('Error:', error);
-      }
-    );
+  ngOnInit(): void {
+    this.checkWebAuthnSupport();
+  }
+
+  checkWebAuthnSupport(): void {
+    this.webAuthnSupported =
+      'PublicKeyCredential' in window &&
+      typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable ===
+        'function';
   }
 
   onRegister() {
@@ -40,80 +38,18 @@ export class LoginComponent {
     );
   }
 
-  private startWebAuthnAuthentication(response: any) {
-    const { challenge, allowCredentials, timeout, rpID, userVerification } =
-      response;
-    response.challenge = this.base64ToBuffer(response.challenge);
-    response.allowCredentials = response.allowCredentials.map((cred: any) => {
-      if (typeof cred.id === 'string') {
-        cred.id = this.base64ToBuffer(cred.id);
+  onLogin() {
+    this.isLoading = true; // Start loading
+    this.fidoService.generateAuthenticationOptions(this.username).subscribe(
+      (response) => {
+        // Handle the response and start WebAuthn Authentication
+        this.startWebAuthnAuthentication(response);
+      },
+      (error) => {
+        this.isLoading = false; // Stop loading on error
+        console.error('Error:', error);
       }
-      return cred;
-    });
-
-    navigator.credentials
-      .get({ publicKey: response })
-      .then((credential: Credential | null) => {
-        if (!credential) {
-          console.error('No credentials returned from WebAuthn API');
-          window.Error('Error Authenticating, Please Try Again!');
-          return;
-        }
-        const loggedInUser = this.username;
-        const publicKeyCredential = credential as PublicKeyCredential;
-        const assertionResponse =
-          publicKeyCredential.response as AuthenticatorAssertionResponse;
-
-        const authenticationData = {
-          loggedInUser: loggedInUser,
-          credential: {
-            authenticatorAttachment:
-              publicKeyCredential.authenticatorAttachment,
-            id: publicKeyCredential.id,
-            type: publicKeyCredential.type,
-            rawId: this.base64urlEncode(
-              new Uint8Array(publicKeyCredential.rawId)
-            ),
-            response: {
-              authenticatorData: this.base64urlEncode(
-                new Uint8Array(assertionResponse.authenticatorData)
-              ),
-              clientDataJSON: this.base64urlEncode(
-                new Uint8Array(assertionResponse.clientDataJSON)
-              ),
-              signature: this.base64urlEncode(
-                new Uint8Array(assertionResponse.signature)
-              ),
-              userHandle: assertionResponse.userHandle
-                ? this.base64urlEncode(
-                    new Uint8Array(assertionResponse.userHandle)
-                  )
-                : null,
-            },
-          },
-        };
-
-        this.fidoService
-          .authenticacteWithWebAuthn(authenticationData)
-          .subscribe(
-            (data) => {
-              this.isLoading = false;
-              if (data.success) {
-                window.alert('Authentication Success');
-              } else {
-                window.alert('Authentication Failed');
-              }
-            },
-            (error) => {
-              console.error('Error:', error);
-              window.Error(error);
-            }
-          );
-      })
-      .catch((error) => {
-        console.error('WebAuthn Authentication error:', error);
-        window.Error(error);
-      });
+    );
   }
 
   private startWebAuthnRegistration(response: any) {
@@ -173,8 +109,104 @@ export class LoginComponent {
         );
       })
       .catch((error) => {
+        this.isLoading = false;
         console.error('WebAuthn Registration error:', error);
-        window.Error(error);
+        if (error.name === 'NotAllowedError') {
+          window.alert('Registration cancelled.');
+        } else {
+          window.alert('Error during registration. Please try again.');
+        }
+      });
+  }
+
+  private startWebAuthnAuthentication(response: any) {
+    const { challenge, allowCredentials, timeout, rpID, userVerification } =
+      response;
+    response.challenge = this.base64ToBuffer(response.challenge);
+    response.allowCredentials = response.allowCredentials.map((cred: any) => {
+      if (typeof cred.id === 'string') {
+        cred.id = this.base64ToBuffer(cred.id);
+      }
+      return cred;
+    });
+
+    navigator.credentials
+      .get({ publicKey: response })
+      .then((credential: Credential | null) => {
+        if (!credential) {
+          console.error('No credentials returned from WebAuthn API');
+          window.Error('Error Authenticating, Please Try Again!');
+          return;
+        }
+        const loggedInUser = this.username;
+        const publicKeyCredential = credential as PublicKeyCredential;
+        const assertionResponse =
+          publicKeyCredential.response as AuthenticatorAssertionResponse;
+
+        const authenticationData = {
+          loggedInUser: loggedInUser,
+          challenge: challenge,
+          credential: {
+            authenticatorAttachment:
+              publicKeyCredential.authenticatorAttachment,
+            id: publicKeyCredential.id,
+            type: publicKeyCredential.type,
+            rawId: this.base64urlEncode(
+              new Uint8Array(publicKeyCredential.rawId)
+            ),
+            response: {
+              authenticatorData: this.base64urlEncode(
+                new Uint8Array(assertionResponse.authenticatorData)
+              ),
+              clientDataJSON: this.base64urlEncode(
+                new Uint8Array(assertionResponse.clientDataJSON)
+              ),
+              signature: this.base64urlEncode(
+                new Uint8Array(assertionResponse.signature)
+              ),
+              userHandle: assertionResponse.userHandle
+                ? this.base64urlEncode(
+                    new Uint8Array(assertionResponse.userHandle)
+                  )
+                : null,
+            },
+          },
+        };
+
+        this.fidoService
+          .authenticacteWithWebAuthn(authenticationData)
+          .subscribe({
+            next: (data) => {
+              this.isLoading = false;
+              if (data.success) {
+                window.alert(data.message || 'Authentication Success');
+              } else {
+                window.alert(data.message || 'Authentication Failed');
+              }
+            },
+            error: (httpError) => {
+              this.isLoading = false;
+              console.error('HTTP Error:', httpError);
+              let errorMessage =
+                'Authentication process failed due to a network or server error.';
+              if (
+                httpError.error &&
+                typeof httpError.error.message === 'string'
+              ) {
+                errorMessage = httpError.error.message;
+              }
+              window.alert(errorMessage);
+            },
+          });
+      })
+      .catch((error) => {
+        this.isLoading = false;
+        console.error('WebAuthn Authentication error:', error);
+        if (error.name === 'NotAllowedError') {
+          window.alert('Authentication cancelled.');
+        } else {
+          window.alert('Error during authentication. Please try again.');
+        }
       });
   }
 

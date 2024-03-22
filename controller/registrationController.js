@@ -96,6 +96,10 @@ exports.generateRegistrationOptions = async (req, res, next) => {
 				// Optional
 				// transports: authenticator.transports,
 			})),
+			authenticatorSelection: {
+				residentKey: 'required',
+				userVerification: 'preferred'
+			},
 		});
 		// Save the challenge to the user's record
 		user.challenge = options.challenge;
@@ -128,6 +132,7 @@ exports.verifyRegistrationData = async (req, res, next) => {
 			expectedChallenge: savedChallenge,
 			expectedOrigin: origin,
 			expectedRPID: rpID,
+			requireUserVerification: true,
 		});
 
 		if (!verification.verified) {
