@@ -193,7 +193,7 @@ exports.verifyAuthenticationData = async (req, res, next) => {
 
 		res.status(200).send({
 			success: true,
-			message: 'Authentication and new counter updation successful!',
+			message: 'Authentication Successful!',
 		});
 	} catch (error) {
 		console.error('Authentication failed:', error);

@@ -10,6 +10,7 @@ export class LoginComponent {
   username: string = '';
   isLoading: boolean = false; // Added to track when loading starts and ends.
   webAuthnSupported: boolean = false;
+  private passkeyPromptTriggered: boolean = false; // To prevent multiple prompts
 
   constructor(private fidoService: FidoService) {}
 
@@ -17,14 +18,39 @@ export class LoginComponent {
     this.checkWebAuthnSupport();
   }
 
+  // checkWebAuthnSupport(): void {
+  //   this.webAuthnSupported =
+  //     'PublicKeyCredential' in window &&
+  //     typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable ===
+  //       'function';
+  // }
+
   checkWebAuthnSupport(): void {
-    this.webAuthnSupported =
-      'PublicKeyCredential' in window &&
-      typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable ===
-        'function';
+    if ('PublicKeyCredential' in window) {
+      PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+        .then((available) => {
+          this.webAuthnSupported = available;
+        })
+        .catch((error) => {
+          console.error('Error checking WebAuthn support', error);
+          this.webAuthnSupported = false;
+        });
+    }
+  }
+
+  triggerPasskeyPrompt(): void {
+    if (this.passkeyPromptTriggered || !this.webAuthnSupported) return;
+    this.passkeyPromptTriggered = true;
+
+    // Simulate getting WebAuthn request options from your service
+    this.onLogin(true);
   }
 
   onRegister() {
+    if (!this.username) {
+      window.alert('Please enter a username.');
+      return;
+    }
     this.isLoading = true; // Start loading
     this.fidoService.generateRegistrationOptions(this.username).subscribe(
       (response) => {
@@ -38,7 +64,11 @@ export class LoginComponent {
     );
   }
 
-  onLogin() {
+  onLogin(withPasskey: boolean = false) {
+    if (!withPasskey && !this.username) {
+      window.alert('Please enter a username.');
+      return;
+    }
     this.isLoading = true; // Start loading
     this.fidoService.generateAuthenticationOptions(this.username).subscribe(
       (response) => {
@@ -98,6 +128,7 @@ export class LoginComponent {
             this.isLoading = false;
             if (data.success) {
               window.alert('Registration Success');
+              this.username = '';
             } else {
               window.alert('Registration Failed');
             }
@@ -180,6 +211,7 @@ export class LoginComponent {
               this.isLoading = false;
               if (data.success) {
                 window.alert(data.message || 'Authentication Success');
+                this.username = '';
               } else {
                 window.alert(data.message || 'Authentication Failed');
               }

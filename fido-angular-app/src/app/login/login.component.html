@@ -13,13 +13,14 @@
 
     <div class="login-container">
         <h2>FIDO Authentication</h2>
-        <input [(ngModel)]="username" placeholder="Enter username">
+        <!-- <input [(ngModel)]="username" placeholder="Enter username"> -->
+        <input [(ngModel)]="username" (focus)="triggerPasskeyPrompt()" placeholder="Enter username" autocomplete="username webauthn" />
         <!-- Register button always visible -->
         <button (click)="onRegister()" [disabled]="isLoading">Register
             <span *ngIf="isLoading" class="loader"></span>
         </button>
         <!-- Conditional login button for WebAuthn support -->
-        <button *ngIf="webAuthnSupported" (click)="onLogin()" [disabled]="isLoading">Login with Passkey
+        <button *ngIf="webAuthnSupported" (click)="onLogin(true)" [disabled]="isLoading">Login with Passkey
             <span *ngIf="isLoading" class="loader"></span>
         </button>
         <!-- Fallback login button -->
